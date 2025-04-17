@@ -5,6 +5,7 @@ use crate::block::Block;
 pub struct Player {
     pub position: (usize, usize),
     pub in_air: bool,  // Track jump state
+    pub is_falling: bool, // Track if player is falling due to gravity
     jump_counter: u8,  // Track how long to stay in the air
     just_jumped: bool, // Flag to prevent immediate landing
 }
@@ -14,6 +15,7 @@ impl Player {
         Self {
             position: (0, grid_size - 2), // Start at bottom left
             in_air: false,
+            is_falling: false,
             jump_counter: 0,
             just_jumped: false,
         }
@@ -21,7 +23,7 @@ impl Player {
     
     // Add jump method
     pub fn jump(&mut self) {
-        if !self.in_air && self.position.1 > 0 {
+        if !self.in_air && !self.is_falling && self.position.1 > 0 {
             self.position.1 -= 1;  // Move up one block
             self.in_air = true;
             self.jump_counter = 1;  // Stay in air for 1 update cycle
@@ -40,23 +42,58 @@ impl Player {
         }
     }
     
-    // Modify land method to check for blocks below
-    pub fn land(&mut self, blocks: &[Block]) {
-        if self.in_air && self.jump_counter == 0 && !self.just_jumped {
-            // Check if there's a block directly beneath the player
-            let block_below = blocks.iter().any(|block| {
-                !block.falling && 
-                block.position.0 == self.position.0 && 
-                block.position.1 == self.position.1 + 2
-            });
-            
-            if !block_below {
-                // Only move back down if there's no block below
-                self.position.1 += 1;
+    // Check if there's ground or a block beneath the player
+    pub fn has_support(&self, blocks: &[Block], grid_size: usize) -> bool {
+        // Check if player is at the bottom of the grid
+        if self.position.1 >= grid_size - 2 {
+            return true;
+        }
+        
+        // Check if there's a block directly beneath the player
+        blocks.iter().any(|block| {
+            !block.falling && 
+            block.position.0 == self.position.0 && 
+            block.position.1 == self.position.1 + 2
+        })
+    }
+    
+    // Update player's falling state
+    pub fn update_falling_state(&mut self, blocks: &[Block], grid_size: usize) {
+        // Only check for falling if not already in a jumping action
+        if !self.in_air && !self.just_jumped {
+            // Check if there's no support beneath the player
+            if !self.has_support(blocks, grid_size) {
+                self.is_falling = true;
             }
+        }
+    }
+    
+    // Apply gravity to make player fall
+    pub fn apply_gravity(&mut self) {
+        if self.is_falling && self.position.1 < usize::MAX - 1 {
+            self.position.1 += 1;  // Move down one block
+        }
+    }
+    
+    // Modify land method to check for blocks below
+    pub fn land(&mut self, blocks: &[Block], grid_size: usize) {
+        // Handle landing after a jump
+        if self.in_air && self.jump_counter == 0 && !self.just_jumped {
+            let has_support = self.has_support(blocks, grid_size);
             
-            // Either way, we're no longer in the air
-            self.in_air = false;
+            if !has_support {
+                // If there's no support after jumping, start falling
+                self.in_air = false;
+                self.is_falling = true;
+            } else {
+                // Land properly after jumping
+                self.in_air = false;
+            }
+        }
+        
+        // Handle landing after falling due to gravity
+        if self.is_falling && self.has_support(blocks, grid_size) {
+            self.is_falling = false;
         }
     }
     

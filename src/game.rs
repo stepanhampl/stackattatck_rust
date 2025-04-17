@@ -141,8 +141,16 @@ impl GridGame {
         // Update jump counter first
         self.player.update_jump();
         
-        // Then check if player should land, passing blocks for collision detection
-        self.player.land(&self.blocks);
+        // Check if player should start falling
+        self.player.update_falling_state(&self.blocks, self.grid_size);
+        
+        // Apply gravity if player is falling
+        if self.player.is_falling {
+            self.player.apply_gravity();
+        }
+        
+        // Check if player should land, passing blocks for collision detection
+        self.player.land(&self.blocks, self.grid_size);
     }
 }
 

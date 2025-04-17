@@ -1,12 +1,16 @@
 use ggez::event::{self, EventHandler};
 use ggez::glam::Vec2;
 use ggez::graphics::{self, Color, DrawParam, Mesh};
-use ggez::{Context, GameResult};
+use ggez::input::keyboard::{KeyInput, KeyCode};
+use ggez::{Context, GameError, GameResult};
+use std::time::{Duration, Instant};
 
 struct GridGame {
     grid_size: usize,
     cell_size: f32,
     figure_position: (usize, usize), // Track only the lower box position
+    last_update: Instant,
+    pending_move: Option<KeyCode>,
 }
 
 impl GridGame {
@@ -15,6 +19,8 @@ impl GridGame {
             grid_size: grid_size,
             cell_size: cell_size,
             figure_position: (0, grid_size - 2), // upper box - head
+            last_update: Instant::now(),
+            pending_move: None,
         }
     }
 
@@ -41,6 +47,34 @@ impl GridGame {
 
 impl EventHandler for GridGame {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
+        // Check if one second has passed
+        if self.last_update.elapsed() >= Duration::from_secs(1) {
+            // Process pending move
+            if let Some(key) = self.pending_move {
+                let (mut x, y) = self.figure_position;
+
+                match key {
+                    KeyCode::Left => {
+                        if x > 0 {
+                            x -= 1;
+                        }
+                    }
+                    KeyCode::Right => {
+                        if x < self.grid_size - 1 {
+                            x += 1;
+                        }
+                    }
+                    _ => {}
+                }
+
+                self.figure_position = (x, y);
+                self.pending_move = None;
+            }
+
+            // Reset the timer
+            self.last_update = Instant::now();
+        }
+
         Ok(())
     }
 
@@ -82,6 +116,24 @@ impl EventHandler for GridGame {
         self.draw_player(ctx, &mut canvas)?;
 
         canvas.finish(ctx)?;
+        Ok(())
+    }
+
+    fn key_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        key_input: KeyInput,
+        _repeat: bool,
+    ) -> Result<(), GameError> {
+        if let Some(keycode) = key_input.keycode {
+            match keycode {
+                KeyCode::Left | KeyCode::Right => {
+                    // Store the last key press before redraw
+                    self.pending_move = Some(keycode);
+                }
+                _ => {}
+            }
+        }
         Ok(())
     }
 }

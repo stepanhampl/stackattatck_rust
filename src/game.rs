@@ -23,14 +23,14 @@ pub struct GridGame {
 }
 
 impl GridGame {
-    pub fn new(grid_size: usize, cell_size: f32, block_fall_speed: usize, block_spawn_rate: u64) -> Self {
+    pub fn new(grid_size: usize, cell_size: f32, refresh_rate_milliseconds: u64, block_fall_speed: usize, block_spawn_rate: u64) -> Self {
         let mut game = Self {
             grid_size,
             cell_size,
             player: Player::new(grid_size),
             last_update: Instant::now(),
             pending_move: None,
-            refresh_rate_milliseconds: 500,
+            refresh_rate_milliseconds,
             blocks: Vec::new(),
             block_fall_speed,
             block_spawn_rate,

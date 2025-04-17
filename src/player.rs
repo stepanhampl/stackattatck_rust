@@ -88,7 +88,7 @@ impl Player {
                 cell_size,
                 cell_size * 2.0, // draws also the lower box - body
             ),
-            Color::BLACK,
+            Color::RED,
         )?;
 
         canvas.draw(&player_mesh, DrawParam::default());

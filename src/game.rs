@@ -136,6 +136,14 @@ impl GridGame {
         // Check for levitating blocks after updating
         self.check_for_levitating_blocks();
     }
+
+    fn update_player(&mut self) {
+        // Update jump counter first
+        self.player.update_jump();
+        
+        // Then check if player should land
+        self.player.land();
+    }
 }
 
 impl EventHandler for GridGame {
@@ -152,6 +160,10 @@ impl EventHandler for GridGame {
                 match key {
                     KeyCode::Left => self.player.move_left(&mut self.blocks),
                     KeyCode::Right => self.player.move_right(self.grid_size, &mut self.blocks),
+                    KeyCode::Up => {
+                        println!("Processing Up key press!");
+                        self.player.jump();
+                    },
                     _ => {}
                 }
                 self.pending_move = None;
@@ -160,6 +172,9 @@ impl EventHandler for GridGame {
                 self.check_for_levitating_blocks();
             }
 
+            // Update player (handles landing after jump)
+            self.update_player();
+            
             // Update falling blocks
             self.update_blocks();
 
@@ -221,10 +236,11 @@ impl EventHandler for GridGame {
 
         if let Some(keycode) = key_input.keycode {
             match keycode {
-                KeyCode::Left | KeyCode::Right => {
+                KeyCode::Left | KeyCode::Right | KeyCode::Up => {
+                    println!("Key pressed: {:?}", keycode);
                     // Store the last key press before redraw
                     self.pending_move = Some(keycode);
-                }
+                },
                 _ => {}
             }
         }

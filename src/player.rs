@@ -4,12 +4,53 @@ use crate::block::Block;
 
 pub struct Player {
     pub position: (usize, usize),
+    pub in_air: bool,  // Track jump state
+    jump_counter: u8,  // Track how long to stay in the air
+    just_jumped: bool, // Flag to prevent immediate landing
 }
 
 impl Player {
     pub fn new(grid_size: usize) -> Self {
         Self {
             position: (0, grid_size - 2), // Start at bottom left
+            in_air: false,
+            jump_counter: 0,
+            just_jumped: false,
+        }
+    }
+    
+    // Add jump method
+    pub fn jump(&mut self) {
+        if !self.in_air && self.position.1 > 0 {
+            self.position.1 -= 1;  // Move up one block
+            self.in_air = true;
+            self.jump_counter = 1;  // Stay in air for 1 update cycle
+            self.just_jumped = true; // Set flag to prevent immediate landing
+            println!("Player jumped! New position: {:?}, in_air: {}", self.position, self.in_air);
+        } else {
+            println!("Jump failed. Current position: {:?}, in_air: {}", self.position, self.in_air);
+        }
+    }
+    
+    // Method to update jump counter
+    pub fn update_jump(&mut self) {
+        if self.just_jumped {
+            // Reset the just_jumped flag, but don't decrement counter yet
+            self.just_jumped = false;
+            println!("Just jumped, not decrementing counter yet. Counter: {}", self.jump_counter);
+        } else if self.in_air && self.jump_counter > 0 {
+            // Only decrement counter in subsequent updates
+            self.jump_counter -= 1;
+            println!("Decremented jump counter to: {}", self.jump_counter);
+        }
+    }
+    
+    // Add land method
+    pub fn land(&mut self) {
+        if self.in_air && self.jump_counter == 0 && !self.just_jumped {
+            self.position.1 += 1;  // Move back down
+            self.in_air = false;
+            println!("Player landed! New position: {:?}, in_air: {}", self.position, self.in_air);
         }
     }
     

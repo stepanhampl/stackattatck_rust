@@ -20,10 +20,12 @@ pub struct GridGame {
     refresh_rate_milliseconds: u64,
     blocks: Vec<Block>,
     block_fall_speed: usize,
+    block_spawn_rate: u64,  // How many refresh cycles between new blocks
+    block_spawn_counter: u64, // Counter for block spawning
 }
 
 impl GridGame {
-    pub fn new(grid_size: usize, cell_size: f32, block_fall_speed: usize) -> Self {
+    pub fn new(grid_size: usize, cell_size: f32, block_fall_speed: usize, block_spawn_rate: u64) -> Self {
         let mut game = Self {
             grid_size,
             cell_size,
@@ -33,6 +35,8 @@ impl GridGame {
             refresh_rate_milliseconds: 500,
             blocks: Vec::new(),
             block_fall_speed,
+            block_spawn_rate,
+            block_spawn_counter: 0,
         };
         
         // Spawn the first block
@@ -52,6 +56,7 @@ impl GridGame {
     }
 
     fn update_blocks(&mut self) {
+        // Update existing blocks
         for block in &mut self.blocks {
             if block.falling {
                 let (x, y) = block.position;
@@ -66,6 +71,12 @@ impl GridGame {
             }
         }
         
+        // Check if it's time to spawn a new block
+        self.block_spawn_counter += 1;
+        if self.block_spawn_counter >= self.block_spawn_rate {
+            self.spawn_block();
+            self.block_spawn_counter = 0;
+        }
     }
 
     fn draw_player(&self, ctx: &mut Context, canvas: &mut graphics::Canvas) -> GameResult {

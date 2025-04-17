@@ -95,7 +95,7 @@ impl Player {
                 if block_can_move {
                     let block_target_x = (block_x as isize + move_by) as usize;
                     
-                    if (!block.falling) {
+                    if !block.falling {
                         // Case: Moving a non-falling block
                         // Find all non-falling blocks in the same vertical column
                         let column_block_indices: Vec<usize> = blocks.iter()

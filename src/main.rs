@@ -1,4 +1,7 @@
 mod game;
+mod block;
+mod player;
+mod rendering;
 
 use game::GridGame;
 use ggez::event;

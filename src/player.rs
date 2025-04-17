@@ -26,9 +26,6 @@ impl Player {
             self.in_air = true;
             self.jump_counter = 1;  // Stay in air for 1 update cycle
             self.just_jumped = true; // Set flag to prevent immediate landing
-            println!("Player jumped! New position: {:?}, in_air: {}", self.position, self.in_air);
-        } else {
-            println!("Jump failed. Current position: {:?}, in_air: {}", self.position, self.in_air);
         }
     }
     
@@ -37,11 +34,9 @@ impl Player {
         if self.just_jumped {
             // Reset the just_jumped flag, but don't decrement counter yet
             self.just_jumped = false;
-            println!("Just jumped, not decrementing counter yet. Counter: {}", self.jump_counter);
         } else if self.in_air && self.jump_counter > 0 {
             // Only decrement counter in subsequent updates
             self.jump_counter -= 1;
-            println!("Decremented jump counter to: {}", self.jump_counter);
         }
     }
     
@@ -62,7 +57,6 @@ impl Player {
             
             // Either way, we're no longer in the air
             self.in_air = false;
-            println!("Player landed! New position: {:?}, in_air: {}", self.position, self.in_air);
         }
     }
     

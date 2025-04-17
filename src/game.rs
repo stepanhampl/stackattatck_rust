@@ -161,7 +161,6 @@ impl EventHandler for GridGame {
                     KeyCode::Left => self.player.move_left(&mut self.blocks),
                     KeyCode::Right => self.player.move_right(self.grid_size, &mut self.blocks),
                     KeyCode::Up => {
-                        println!("Processing Up key press!");
                         self.player.jump();
                     },
                     _ => {}
@@ -237,7 +236,6 @@ impl EventHandler for GridGame {
         if let Some(keycode) = key_input.keycode {
             match keycode {
                 KeyCode::Left | KeyCode::Right | KeyCode::Up => {
-                    println!("Key pressed: {:?}", keycode);
                     // Store the last key press before redraw
                     self.pending_move = Some(keycode);
                 },

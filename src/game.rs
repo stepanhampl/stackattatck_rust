@@ -48,6 +48,42 @@ impl GridGame {
         self.blocks.push(spawn_random_block(self.grid_size));
     }
 
+    fn check_for_levitating_blocks(&mut self) {
+        let mut blocks_changed = false;
+        
+        for i in 0..self.blocks.len() {
+            // Skip blocks that are already falling
+            if self.blocks[i].falling {
+                continue;
+            }
+            
+            let (x, y) = self.blocks[i].position;
+            
+            // Skip blocks on the bottom row
+            if y >= self.grid_size - 1 {
+                continue;
+            }
+            
+            // Check if there's a block or ground beneath this one
+            let has_support = self.blocks.iter().any(|b| 
+                !b.falling && 
+                b.position.0 == x && 
+                b.position.1 == y + 1
+            );
+            
+            // If no support is found, make it start falling
+            if !has_support {
+                self.blocks[i].falling = true;
+                blocks_changed = true;
+            }
+        }
+        
+        // If blocks started falling, check again for chain reactions
+        if blocks_changed {
+            self.check_for_levitating_blocks();
+        }
+    }
+
     fn update_blocks(&mut self) {
         for i in 0..self.blocks.len() {
             if !self.blocks[i].falling {
@@ -96,6 +132,9 @@ impl GridGame {
             self.spawn_block();
             self.block_spawn_counter = 0;
         }
+        
+        // Check for levitating blocks after updating
+        self.check_for_levitating_blocks();
     }
 }
 
@@ -116,6 +155,9 @@ impl EventHandler for GridGame {
                     _ => {}
                 }
                 self.pending_move = None;
+                
+                // Check for levitating blocks after player moves a block
+                self.check_for_levitating_blocks();
             }
 
             // Update falling blocks

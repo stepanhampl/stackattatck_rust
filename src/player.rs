@@ -31,20 +31,52 @@ impl Player {
             );
             
             if let Some(idx) = block_idx {
+                let block_x = blocks[idx].position.0;
                 let block_can_move = if move_by < 0 {
-                    blocks[idx].position.0 > 0
+                    block_x > 0
                 } else {
-                    blocks[idx].position.0 < grid_size - 1
+                    block_x < grid_size - 1
                 };
                 
                 if block_can_move {
-                    let block_target_x = (blocks[idx].position.0 as isize + move_by) as usize;
-                    let block_target = (block_target_x, blocks[idx].position.1);
-                    let block_blocked = blocks.iter().any(|b| b.position == block_target);
+                    let block_target_x = (block_x as isize + move_by) as usize;
                     
-                    if !block_blocked {
-                        // Move the block
-                        blocks[idx].position.0 = block_target_x;
+                    // Find all blocks in the same vertical column
+                    let column_block_indices: Vec<usize> = blocks.iter()
+                        .enumerate()
+                        .filter_map(|(i, block)| {
+                            if block.position.0 == block_x {
+                                Some(i)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    
+                    // Check if any block in the column would be blocked
+                    let mut blocked = false;
+                    for &col_idx in &column_block_indices {
+                        let (_, y) = blocks[col_idx].position;
+                        let target = (block_target_x, y);
+                        
+                        // Check if target position is occupied by a block not in our column
+                        for (i, block) in blocks.iter().enumerate() {
+                            if block.position == target && !column_block_indices.contains(&i) {
+                                blocked = true;
+                                break;
+                            }
+                        }
+                        
+                        if blocked {
+                            break;
+                        }
+                    }
+                    
+                    if !blocked {
+                        // Move all blocks in the column
+                        for &col_idx in &column_block_indices {
+                            blocks[col_idx].position.0 = block_target_x;
+                        }
                         // Then move the player
                         self.position.0 = target_x;
                     }

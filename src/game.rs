@@ -4,6 +4,12 @@ use ggez::graphics::{self, Color, DrawParam, Mesh};
 use ggez::input::keyboard::{KeyInput, KeyCode};
 use ggez::{Context, GameError, GameResult};
 use std::time::{Duration, Instant};
+use rand::Rng;
+
+struct Block {
+    position: (usize, usize),
+    falling: bool,
+}
 
 pub struct GridGame {
     pub grid_size: usize,
@@ -12,18 +18,54 @@ pub struct GridGame {
     last_update: Instant,
     pending_move: Option<KeyCode>,
     refresh_rate_milliseconds: u64,
+    blocks: Vec<Block>,
+    block_fall_speed: usize,
 }
 
 impl GridGame {
-    pub fn new(grid_size: usize, cell_size: f32) -> Self {
-        Self {
-            grid_size: grid_size,
-            cell_size: cell_size,
-            figure_position: (0, grid_size - 2), // upper box - head
+    pub fn new(grid_size: usize, cell_size: f32, block_fall_speed: usize) -> Self {
+        let mut game = Self {
+            grid_size,
+            cell_size,
+            figure_position: (0, grid_size - 2),
             last_update: Instant::now(),
             pending_move: None,
             refresh_rate_milliseconds: 500,
+            blocks: Vec::new(),
+            block_fall_speed,
+        };
+        
+        // Spawn the first block
+        game.spawn_block();
+        
+        game
+    }
+
+    fn spawn_block(&mut self) {
+        let mut rng = rand::rng();
+        let x = rng.random_range(0..self.grid_size);
+        
+        self.blocks.push(Block {
+            position: (x, 0),
+            falling: true,
+        });
+    }
+
+    fn update_blocks(&mut self) {
+        for block in &mut self.blocks {
+            if block.falling {
+                let (x, y) = block.position;
+                let new_y = y + self.block_fall_speed;
+                
+                if new_y < self.grid_size {
+                    block.position = (x, new_y);
+                } else {
+                    block.position = (x, self.grid_size - 1);
+                    block.falling = false;
+                }
+            }
         }
+        
     }
 
     fn draw_player(&self, ctx: &mut Context, canvas: &mut graphics::Canvas) -> GameResult {
@@ -43,6 +85,25 @@ impl GridGame {
 
         canvas.draw(&lower_box, DrawParam::default());
 
+        Ok(())
+    }
+
+    fn draw_blocks(&self, ctx: &mut Context, canvas: &mut graphics::Canvas) -> GameResult {
+        for block in &self.blocks {
+            let (x, y) = block.position;
+            let block_mesh = graphics::Mesh::new_rectangle(
+                ctx,
+                graphics::DrawMode::fill(),
+                graphics::Rect::new(
+                    x as f32 * self.cell_size,
+                    y as f32 * self.cell_size,
+                    self.cell_size,
+                    self.cell_size,
+                ),
+                Color::BLACK,
+            )?;
+            canvas.draw(&block_mesh, DrawParam::default());
+        }
         Ok(())
     }
 }
@@ -72,6 +133,9 @@ impl EventHandler for GridGame {
                 self.figure_position = (x, y);
                 self.pending_move = None;
             }
+
+            // Update falling blocks
+            self.update_blocks();
 
             // Reset the timer
             self.last_update = Instant::now();
@@ -116,6 +180,9 @@ impl EventHandler for GridGame {
 
         // Draw the player using the dedicated method
         self.draw_player(ctx, &mut canvas)?;
+        
+        // Draw the blocks
+        self.draw_blocks(ctx, &mut canvas)?;
 
         canvas.finish(ctx)?;
         Ok(())

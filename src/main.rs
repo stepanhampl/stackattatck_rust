@@ -11,6 +11,7 @@ struct GridGame {
     figure_position: (usize, usize), // Track only the lower box position
     last_update: Instant,
     pending_move: Option<KeyCode>,
+    refresh_rate_milliseconds: u64,
 }
 
 impl GridGame {
@@ -21,6 +22,7 @@ impl GridGame {
             figure_position: (0, grid_size - 2), // upper box - head
             last_update: Instant::now(),
             pending_move: None,
+            refresh_rate_milliseconds: 500,
         }
     }
 
@@ -48,7 +50,7 @@ impl GridGame {
 impl EventHandler for GridGame {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         // Check if one second has passed
-        if self.last_update.elapsed() >= Duration::from_secs(1) {
+        if self.last_update.elapsed() >= Duration::from_millis(self.refresh_rate_milliseconds) {
             // Process pending move
             if let Some(key) = self.pending_move {
                 let (mut x, y) = self.figure_position;

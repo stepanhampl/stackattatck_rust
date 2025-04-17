@@ -141,8 +141,8 @@ impl GridGame {
         // Update jump counter first
         self.player.update_jump();
         
-        // Then check if player should land
-        self.player.land();
+        // Then check if player should land, passing blocks for collision detection
+        self.player.land(&self.blocks);
     }
 }
 

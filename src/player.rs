@@ -45,10 +45,22 @@ impl Player {
         }
     }
     
-    // Add land method
-    pub fn land(&mut self) {
+    // Modify land method to check for blocks below
+    pub fn land(&mut self, blocks: &[Block]) {
         if self.in_air && self.jump_counter == 0 && !self.just_jumped {
-            self.position.1 += 1;  // Move back down
+            // Check if there's a block directly beneath the player
+            let block_below = blocks.iter().any(|block| {
+                !block.falling && 
+                block.position.0 == self.position.0 && 
+                block.position.1 == self.position.1 + 2
+            });
+            
+            if !block_below {
+                // Only move back down if there's no block below
+                self.position.1 += 1;
+            }
+            
+            // Either way, we're no longer in the air
             self.in_air = false;
             println!("Player landed! New position: {:?}, in_air: {}", self.position, self.in_air);
         }

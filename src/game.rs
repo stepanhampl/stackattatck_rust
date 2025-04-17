@@ -93,8 +93,8 @@ impl EventHandler for GridGame {
             // Process pending move
             if let Some(key) = self.pending_move {
                 match key {
-                    KeyCode::Left => self.player.move_left(&self.blocks),
-                    KeyCode::Right => self.player.move_right(self.grid_size, &self.blocks),
+                    KeyCode::Left => self.player.move_left(&mut self.blocks),
+                    KeyCode::Right => self.player.move_right(self.grid_size, &mut self.blocks),
                     _ => {}
                 }
                 self.pending_move = None;

@@ -13,31 +13,65 @@ impl Player {
         }
     }
     
-    pub fn move_left(&mut self, blocks: &[Block]) {
+    pub fn move_left(&mut self, blocks: &mut [Block]) {
         if self.position.0 > 0 {
             // Check if there's a block at the position we want to move to
-            let new_position = (self.position.0 - 1, self.position.0);
-            let block_in_way = blocks.iter().any(|block| 
-                block.position.0 == new_position.0 && 
-                (block.position.1 == self.position.1 || block.position.1 == self.position.1 + 1)
+            let target_pos = (self.position.0 - 1, self.position.1);
+            let target_pos_body = (self.position.0 - 1, self.position.1 + 1); // Position for player's body
+            
+            // Find if there's a block at either the head or body position
+            let block_idx = blocks.iter().position(|block| 
+                block.position == target_pos || block.position == target_pos_body
             );
             
-            if !block_in_way {
+            if let Some(idx) = block_idx {
+                // There's a block, check if we can push it
+                if blocks[idx].position.0 > 0 {
+                    // Check if there's another block or wall preventing movement
+                    let block_target = (blocks[idx].position.0 - 1, blocks[idx].position.1);
+                    let block_blocked = blocks.iter().any(|b| b.position == block_target);
+                    
+                    if !block_blocked {
+                        // Move the block
+                        blocks[idx].position.0 -= 1;
+                        // Then move the player
+                        self.position.0 -= 1;
+                    }
+                }
+            } else {
+                // No block, move freely
                 self.position.0 -= 1;
             }
         }
     }
     
-    pub fn move_right(&mut self, grid_size: usize, blocks: &[Block]) {
+    pub fn move_right(&mut self, grid_size: usize, blocks: &mut [Block]) {
         if self.position.0 < grid_size - 1 {
             // Check if there's a block at the position we want to move to
-            let new_position = (self.position.0 + 1, self.position.0);
-            let block_in_way = blocks.iter().any(|block| 
-                block.position.0 == new_position.0 && 
-                (block.position.1 == self.position.1 || block.position.1 == self.position.1 + 1)
+            let target_pos = (self.position.0 + 1, self.position.1);
+            let target_pos_body = (self.position.0 + 1, self.position.1 + 1); // Position for player's body
+            
+            // Find if there's a block at either the head or body position
+            let block_idx = blocks.iter().position(|block| 
+                block.position == target_pos || block.position == target_pos_body
             );
             
-            if !block_in_way {
+            if let Some(idx) = block_idx {
+                // There's a block, check if we can push it
+                if blocks[idx].position.0 < grid_size - 1 {
+                    // Check if there's another block or wall preventing movement
+                    let block_target = (blocks[idx].position.0 + 1, blocks[idx].position.1);
+                    let block_blocked = blocks.iter().any(|b| b.position == block_target);
+                    
+                    if !block_blocked {
+                        // Move the block
+                        blocks[idx].position.0 += 1;
+                        // Then move the player
+                        self.position.0 += 1;
+                    }
+                }
+            } else {
+                // No block, move freely
                 self.position.0 += 1;
             }
         }

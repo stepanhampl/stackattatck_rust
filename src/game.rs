@@ -49,26 +49,44 @@ impl GridGame {
     }
 
     fn update_blocks(&mut self) {
-        // Update existing blocks
-        for block in &mut self.blocks {
-            if block.falling {
-                let (x, y) = block.position;
-                let new_y = y + self.block_fall_speed;
-                
-                // Check if the block will hit the player's head
-                let (player_x, player_y) = self.player.position;
-                if x == player_x && new_y == player_y {
-                    self.game_over = true;
-                    block.falling = false;
-                    return;
+        for i in 0..self.blocks.len() {
+            if !self.blocks[i].falling {
+                continue;
+            }
+            
+            let (x, y) = self.blocks[i].position;
+            let new_y = y + self.block_fall_speed;
+            
+            // Check if the block will hit the player's head
+            let (player_x, player_y) = self.player.position;
+            if x == player_x && new_y == player_y {
+                self.game_over = true;
+                self.blocks[i].falling = false;
+                return;
+            }
+            
+            // Check if the block will hit the bottom of the grid
+            if new_y >= self.grid_size {
+                self.blocks[i].position.1 = self.grid_size - 1;
+                self.blocks[i].falling = false;
+                continue;
+            }
+            
+            // Check for collision with other blocks
+            let mut will_collide = false;
+            for j in 0..self.blocks.len() {
+                if i != j && !self.blocks[j].falling && 
+                   self.blocks[j].position.0 == x && 
+                   self.blocks[j].position.1 == new_y {
+                    will_collide = true;
+                    break;
                 }
-                
-                if new_y < self.grid_size {
-                    block.position = (x, new_y);
-                } else {
-                    block.position = (x, self.grid_size - 1);
-                    block.falling = false;
-                }
+            }
+            
+            if will_collide {
+                self.blocks[i].falling = false;
+            } else {
+                self.blocks[i].position.1 = new_y;
             }
         }
         

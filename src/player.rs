@@ -1,5 +1,6 @@
 use ggez::graphics::{self, Color, DrawParam};
 use ggez::{Context, GameResult};
+use crate::block::Block;
 
 pub struct Player {
     pub position: (usize, usize),
@@ -12,15 +13,33 @@ impl Player {
         }
     }
     
-    pub fn move_left(&mut self) {
+    pub fn move_left(&mut self, blocks: &[Block]) {
         if self.position.0 > 0 {
-            self.position.0 -= 1;
+            // Check if there's a block at the position we want to move to
+            let new_position = (self.position.0 - 1, self.position.0);
+            let block_in_way = blocks.iter().any(|block| 
+                block.position.0 == new_position.0 && 
+                (block.position.1 == self.position.1 || block.position.1 == self.position.1 + 1)
+            );
+            
+            if !block_in_way {
+                self.position.0 -= 1;
+            }
         }
     }
     
-    pub fn move_right(&mut self, grid_size: usize) {
+    pub fn move_right(&mut self, grid_size: usize, blocks: &[Block]) {
         if self.position.0 < grid_size - 1 {
-            self.position.0 += 1;
+            // Check if there's a block at the position we want to move to
+            let new_position = (self.position.0 + 1, self.position.0);
+            let block_in_way = blocks.iter().any(|block| 
+                block.position.0 == new_position.0 && 
+                (block.position.1 == self.position.1 || block.position.1 == self.position.1 + 1)
+            );
+            
+            if !block_in_way {
+                self.position.0 += 1;
+            }
         }
     }
     

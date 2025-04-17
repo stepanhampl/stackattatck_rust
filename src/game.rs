@@ -1,5 +1,5 @@
 use ggez::event::EventHandler;
-use ggez::graphics::{self, Color};
+use ggez::graphics::{self, Color, Text};
 use ggez::input::keyboard::{KeyInput, KeyCode};
 use ggez::{Context, GameError, GameResult};
 use std::time::{Duration, Instant};
@@ -19,6 +19,7 @@ pub struct GridGame {
     block_fall_speed: usize,
     block_spawn_rate: u64,  // How many refresh cycles between new blocks
     block_spawn_counter: u64, // Counter for block spawning
+    game_over: bool,
 }
 
 impl GridGame {
@@ -34,6 +35,7 @@ impl GridGame {
             block_fall_speed,
             block_spawn_rate,
             block_spawn_counter: 0,
+            game_over: false,
         };
         
         // Spawn the first block
@@ -52,6 +54,14 @@ impl GridGame {
             if block.falling {
                 let (x, y) = block.position;
                 let new_y = y + self.block_fall_speed;
+                
+                // Check if the block will hit the player's head
+                let (player_x, player_y) = self.player.position;
+                if x == player_x && new_y == player_y {
+                    self.game_over = true;
+                    block.falling = false;
+                    return;
+                }
                 
                 if new_y < self.grid_size {
                     block.position = (x, new_y);
@@ -73,6 +83,11 @@ impl GridGame {
 
 impl EventHandler for GridGame {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
+        // Skip updates if the game is over
+        if self.game_over {
+            return Ok(());
+        }
+
         // Check if one second has passed
         if self.last_update.elapsed() >= Duration::from_millis(self.refresh_rate_milliseconds) {
             // Process pending move
@@ -110,6 +125,25 @@ impl EventHandler for GridGame {
             block.draw(ctx, &mut canvas, self.cell_size)?;
         }
 
+        // Draw "Game Over" text if the game is over
+        if self.game_over {
+            let window_size = self.grid_size as f32 * self.cell_size;
+            let game_over_text = Text::new("Game Over");
+            
+            // Position text in the center of the screen
+            let text_x = window_size / 2.0;
+            let text_y = window_size / 2.0;
+            
+            canvas.draw(
+                &game_over_text, 
+                graphics::DrawParam::default()
+                    .dest([text_x, text_y])
+                    .color(Color::RED)
+                    .scale([2.0, 2.0])
+                    .offset([0.5, 0.5])  // Center the text at the destination point
+            );
+        }
+
         canvas.finish(ctx)?;
         Ok(())
     }
@@ -120,6 +154,11 @@ impl EventHandler for GridGame {
         key_input: KeyInput,
         _repeat: bool,
     ) -> Result<(), GameError> {
+        // Ignore input if game is over
+        if self.game_over {
+            return Ok(());
+        }
+
         if let Some(keycode) = key_input.keycode {
             match keycode {
                 KeyCode::Left | KeyCode::Right => {

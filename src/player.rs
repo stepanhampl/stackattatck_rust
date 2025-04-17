@@ -72,7 +72,8 @@ impl Player {
             );
             
             if let Some(idx) = block_idx {
-                let block_x = blocks[idx].position.0;
+                let block = &blocks[idx];
+                let block_x = block.position.0;
                 let block_can_move = if move_by < 0 {
                     block_x > 0
                 } else {
@@ -82,44 +83,60 @@ impl Player {
                 if block_can_move {
                     let block_target_x = (block_x as isize + move_by) as usize;
                     
-                    // Find all blocks in the same vertical column
-                    let column_block_indices: Vec<usize> = blocks.iter()
-                        .enumerate()
-                        .filter_map(|(i, block)| {
-                            if block.position.0 == block_x {
-                                Some(i)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-                    
-                    // Check if any block in the column would be blocked
-                    let mut blocked = false;
-                    for &col_idx in &column_block_indices {
-                        let (_, y) = blocks[col_idx].position;
-                        let target = (block_target_x, y);
+                    if (!block.falling) {
+                        // Case: Moving a non-falling block
+                        // Find all non-falling blocks in the same vertical column
+                        let column_block_indices: Vec<usize> = blocks.iter()
+                            .enumerate()
+                            .filter_map(|(i, b)| {
+                                if b.position.0 == block_x && !b.falling {
+                                    Some(i)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
                         
-                        // Check if target position is occupied by a block not in our column
-                        for (i, block) in blocks.iter().enumerate() {
-                            if block.position == target && !column_block_indices.contains(&i) {
-                                blocked = true;
+                        // Check if any block in the column would be blocked
+                        let mut blocked = false;
+                        for &col_idx in &column_block_indices {
+                            let (_, y) = blocks[col_idx].position;
+                            let target = (block_target_x, y);
+                            
+                            // Check if target position is occupied by a block not in our column
+                            for (i, b) in blocks.iter().enumerate() {
+                                if b.position == target && !column_block_indices.contains(&i) {
+                                    blocked = true;
+                                    break;
+                                }
+                            }
+                            
+                            if blocked {
                                 break;
                             }
                         }
                         
-                        if blocked {
-                            break;
+                        if !blocked {
+                            // Move all non-falling blocks in the column
+                            for &col_idx in &column_block_indices {
+                                blocks[col_idx].position.0 = block_target_x;
+                            }
+                            // Then move the player
+                            self.position.0 = target_x;
                         }
-                    }
-                    
-                    if !blocked {
-                        // Move all blocks in the column
-                        for &col_idx in &column_block_indices {
-                            blocks[col_idx].position.0 = block_target_x;
+                    } else {
+                        // Case: Moving a falling block that's adjacent to the player
+                        let target = (block_target_x, block.position.1);
+                        
+                        // Check if the target position is occupied
+                        let is_blocked = blocks.iter().any(|b| b.position == target);
+                        
+                        if !is_blocked {
+                            // Move only this falling block
+                            blocks[idx].position.0 = block_target_x;
+                            // Then move the player
+                            self.position.0 = target_x;
                         }
-                        // Then move the player
-                        self.position.0 = target_x;
                     }
                 }
             } else {

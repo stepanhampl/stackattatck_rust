@@ -1,5 +1,3 @@
-use ggez::graphics::{self, Color, DrawParam};
-use ggez::{Context, GameResult};
 use crate::block::Block;
 
 // Add a constant for fall delay duration
@@ -324,23 +322,5 @@ impl Player {
     
     pub fn move_right(&mut self, grid_size: usize, blocks: &mut [Block]) {
         self.move_horizontal(1, grid_size, blocks);
-    }
-    
-    pub fn draw(&self, ctx: &mut Context, canvas: &mut graphics::Canvas, cell_size: f32) -> GameResult {
-        let (x, y) = self.position;
-        let player_mesh = graphics::Mesh::new_rectangle(
-            ctx,
-            graphics::DrawMode::fill(),
-            graphics::Rect::new(
-                x as f32 * cell_size,
-                y as f32 * cell_size,
-                cell_size,
-                cell_size * self.body_size as f32, // Use body_size variable instead of hardcoded 2.0
-            ),
-            Color::RED,
-        )?;
-
-        canvas.draw(&player_mesh, DrawParam::default());
-        Ok(())
     }
 }

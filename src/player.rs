@@ -11,6 +11,7 @@ pub struct Player {
     just_jumped: bool, // Flag to prevent immediate landing
     pub body_size: usize, // Store the player's vertical size
     fall_delay_counter: u8, // Counter for delaying fall
+    grid_size: usize, // Store the grid size for consistent boundary checks
 }
 
 impl Player {
@@ -33,6 +34,7 @@ impl Player {
             just_jumped: false,
             body_size: body_height,
             fall_delay_counter: 0,
+            grid_size,
         }
     }
     
@@ -383,11 +385,12 @@ impl Player {
     }
     
     pub fn move_left(&mut self, blocks: &mut [Block]) {
-        // For left movement, we only need to check position > 0
-        self.move_horizontal(-1, usize::MAX, blocks); // MAX value since we only need position > 0
+        // Use the stored grid size from the Player struct
+        self.move_horizontal(-1, self.grid_size, blocks);
     }
     
-    pub fn move_right(&mut self, grid_size: usize, blocks: &mut [Block]) {
-        self.move_horizontal(1, grid_size, blocks);
+    pub fn move_right(&mut self, blocks: &mut [Block]) {
+        // Use the stored grid size from the Player struct
+        self.move_horizontal(1, self.grid_size, blocks);
     }
 }

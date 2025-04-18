@@ -19,8 +19,8 @@ impl Block {
 }
 
 pub fn spawn_random_block(grid_size: usize) -> Block {
-    let mut rng = rand::rng();
-    let x = rng.random_range(0..grid_size);
+    let mut rng = rand::thread_rng();
+    let x = rng.gen_range(0..grid_size);
     
     Block::new((x, 0))
 }

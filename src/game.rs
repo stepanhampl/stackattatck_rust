@@ -266,6 +266,19 @@ impl GridGame {
         
         None
     }
+
+    // Add these new methods to support testing
+    pub fn get_score(&self) -> u32 {
+        self.score
+    }
+    
+    pub fn is_game_over(&self) -> bool {
+        self.game_over
+    }
+    
+    pub fn get_blocks(&self) -> &Vec<Block> {
+        &self.blocks
+    }
 }
 
 impl EventHandler for GridGame {
@@ -303,7 +316,7 @@ impl EventHandler for GridGame {
             if let Some(key) = self.determine_movement() {
                 match key {
                     KeyCode::Left => self.player.move_left(&mut self.blocks),
-                    KeyCode::Right => self.player.move_right(self.grid_size, &mut self.blocks),
+                    KeyCode::Right => self.player.move_right(&mut self.blocks),
                     KeyCode::Up => {
                         // Only jump if we haven't already jumped
                         if !self.player.in_air {

@@ -8,16 +8,19 @@ pub struct Player {
     pub is_falling: bool, // Track if player is falling due to gravity
     jump_counter: u8,  // Track how long to stay in the air
     just_jumped: bool, // Flag to prevent immediate landing
+    pub body_size: usize, // Store the player's vertical size
 }
 
 impl Player {
     pub fn new(grid_size: usize) -> Self {
+        let body_height = 2; // Store body size as a variable
         Self {
-            position: (0, grid_size - 2), // Start at bottom left
+            position: (0, grid_size - body_height), // Start at bottom left
             in_air: false,
             is_falling: false,
             jump_counter: 0,
             just_jumped: false,
+            body_size: body_height,
         }
     }
     
@@ -45,7 +48,7 @@ impl Player {
     // Check if there's ground or a block beneath the player
     pub fn has_support(&self, blocks: &[Block], grid_size: usize) -> bool {
         // Check if player is at the bottom of the grid
-        if self.position.1 >= grid_size - 2 {
+        if self.position.1 >= grid_size - self.body_size {
             return true;
         }
         
@@ -53,7 +56,7 @@ impl Player {
         blocks.iter().any(|block| {
             !block.falling && 
             block.position.0 == self.position.0 && 
-            block.position.1 == self.position.1 + 2
+            block.position.1 == self.position.1 + self.body_size
         })
     }
     
@@ -107,12 +110,16 @@ impl Player {
         
         if can_move {
             let target_x = (self.position.0 as isize + move_by) as usize;
-            let target_pos = (target_x, self.position.1);
-            let target_pos_body = (target_x, self.position.1 + 1);
             
-            let block_idx = blocks.iter().position(|block| 
-                block.position == target_pos || block.position == target_pos_body
-            );
+            // Check for collision with any part of the player's body
+            let mut block_idx = None;
+            for body_part in 0..self.body_size {
+                let target_pos = (target_x, self.position.1 + body_part);
+                if let Some(idx) = blocks.iter().position(|block| block.position == target_pos) {
+                    block_idx = Some(idx);
+                    break;
+                }
+            }
             
             if let Some(idx) = block_idx {
                 let block = &blocks[idx];
@@ -207,7 +214,7 @@ impl Player {
                 x as f32 * cell_size,
                 y as f32 * cell_size,
                 cell_size,
-                cell_size * 2.0, // draws also the lower box - body
+                cell_size * self.body_size as f32, // Use body_size variable instead of hardcoded 2.0
             ),
             Color::RED,
         )?;

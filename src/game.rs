@@ -84,6 +84,29 @@ impl GridGame {
         }
     }
 
+    fn check_full_rows(&mut self) {
+        // Check each row from the bottom up
+        for row in (0..self.grid_size).rev() {
+            // Count non-falling blocks in this row
+            let blocks_in_row = self.blocks.iter()
+                .filter(|block| !block.falling && block.position.1 == row)
+                .count();
+            
+            // If the row is full
+            if blocks_in_row == self.grid_size {
+                // Remove all blocks in this row
+                self.blocks.retain(|block| block.position.1 != row);
+                
+                // Check for blocks that are now levitating after removing the row
+                self.check_for_levitating_blocks();
+                
+                // We'll check one row at a time to keep it simple
+                // The next full row (if any) will be caught in the next update
+                break;
+            }
+        }
+    }
+
     fn update_blocks(&mut self) {
         for i in 0..self.blocks.len() {
             if !self.blocks[i].falling {
@@ -135,6 +158,9 @@ impl GridGame {
         
         // Check for levitating blocks after updating
         self.check_for_levitating_blocks();
+        
+        // Add this new line: Check if any rows are full
+        self.check_full_rows();
     }
 
     fn update_player(&mut self) {

@@ -130,6 +130,13 @@ impl GridGame {
     }
 
     fn update_blocks(&mut self) {
+        self.update_falling_blocks();
+        self.handle_block_spawning();
+        self.check_for_levitating_blocks();
+        self.check_full_rows();
+    }
+
+    fn update_falling_blocks(&mut self) {
         for i in 0..self.blocks.len() {
             if !self.blocks[i].falling {
                 continue;
@@ -138,51 +145,57 @@ impl GridGame {
             let (x, y) = self.blocks[i].position;
             let new_y = y + self.block_fall_speed;
             
-            // Check if the block will hit the player's head
-            let (player_x, player_y) = self.player.position;
-            if x == player_x && new_y == player_y {
-                self.game_over = true;
-                self.blocks[i].falling = false;
-                return;
+            if self.check_block_player_collision(x, new_y) {
+                return; // Game over detected, exit early
             }
             
-            // Check if the block will hit the bottom of the grid
-            if new_y >= self.grid_size {
-                self.blocks[i].position.1 = self.grid_size - 1;
-                self.blocks[i].falling = false;
+            if self.check_block_bottom_collision(i, new_y) {
                 continue;
             }
             
-            // Check for collision with other blocks
-            let mut will_collide = false;
-            for j in 0..self.blocks.len() {
-                if i != j && !self.blocks[j].falling && 
-                   self.blocks[j].position.0 == x && 
-                   self.blocks[j].position.1 == new_y {
-                    will_collide = true;
-                    break;
-                }
-            }
-            
-            if will_collide {
+            if self.check_block_block_collision(i, x, new_y) {
                 self.blocks[i].falling = false;
             } else {
                 self.blocks[i].position.1 = new_y;
             }
         }
-        
-        // Check if it's time to spawn a new block
+    }
+
+    fn check_block_player_collision(&mut self, x: usize, new_y: usize) -> bool {
+        let (player_x, player_y) = self.player.position;
+        if x == player_x && new_y == player_y {
+            self.game_over = true;
+            return true;
+        }
+        false
+    }
+
+    fn check_block_bottom_collision(&mut self, block_idx: usize, new_y: usize) -> bool {
+        if new_y >= self.grid_size {
+            self.blocks[block_idx].position.1 = self.grid_size - 1;
+            self.blocks[block_idx].falling = false;
+            return true;
+        }
+        false
+    }
+
+    fn check_block_block_collision(&self, block_idx: usize, x: usize, new_y: usize) -> bool {
+        for j in 0..self.blocks.len() {
+            if block_idx != j && !self.blocks[j].falling && 
+               self.blocks[j].position.0 == x && 
+               self.blocks[j].position.1 == new_y {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn handle_block_spawning(&mut self) {
         self.block_spawn_counter += 1;
         if self.block_spawn_counter >= self.block_spawn_rate {
             self.spawn_block();
             self.block_spawn_counter = 0;
         }
-        
-        // Check for levitating blocks after updating
-        self.check_for_levitating_blocks();
-        
-        // Add this new line: Check if any rows are full
-        self.check_full_rows();
     }
 
     fn update_player(&mut self) {
@@ -244,123 +257,18 @@ impl EventHandler for GridGame {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        // Clear screen with white background (for white squares)
         let mut canvas = graphics::Canvas::from_frame(ctx, Color::WHITE);
 
-        // Draw the score bar
-        let score_bar = graphics::Mesh::new_rectangle(
-            ctx,
-            graphics::DrawMode::fill(),
-            graphics::Rect::new(
-                0.0,
-                0.0,
-                self.grid_size as f32 * self.cell_size,
-                self.cell_size,
-            ),
-            Color::BLUE,
-        )?;
-        canvas.draw(&score_bar, graphics::DrawParam::default());
-        
-        // Draw the score text
-        let score_text = Text::new(format!("Score: {}", self.score));
-        let text_x = 10.0; // Left padding
-        let text_y = self.cell_size / 2.0;
-        
-        canvas.draw(
-            &score_text, 
-            graphics::DrawParam::default()
-                .dest([text_x, text_y])
-                .color(Color::WHITE)
-                .offset([0.0, 0.5]) // Center vertically
-        );
-        
-        // Create and draw restart button
-        let button_width = 80.0;
-        let button_height = self.cell_size * 0.8;
-        let button_x = self.grid_size as f32 * self.cell_size - button_width - 10.0; // Right aligned with padding
-        let button_y = (self.cell_size - button_height) / 2.0; // Centered vertically
-        
-        // Store the button area for hit detection
-        self.restart_button = graphics::Rect::new(button_x, button_y, button_width, button_height);
-        
-        let restart_button_mesh = graphics::Mesh::new_rectangle(
-            ctx,
-            graphics::DrawMode::fill(),
-            self.restart_button,
-            Color::GREEN, // Use a different color to make it stand out
-        )?;
-        canvas.draw(&restart_button_mesh, graphics::DrawParam::default());
-        
-        // Draw restart text
-        let restart_text = Text::new("Restart");
-        let restart_text_x = button_x + button_width / 2.0;
-        let restart_text_y = button_y + button_height / 2.0;
-        
-        canvas.draw(
-            &restart_text, 
-            graphics::DrawParam::default()
-                .dest([restart_text_x, restart_text_y])
-                .color(Color::BLACK)
-                .offset([0.5, 0.5]) // Center the text
-        );
+        self.draw_score_bar(ctx, &mut canvas)?;
+        self.draw_restart_button(ctx, &mut canvas)?;
 
         // Define the offset for all game elements
         let y_offset = self.cell_size;
 
-        // Draw the grid with offset
         draw_grid(ctx, &mut canvas, self.grid_size, self.cell_size, y_offset)?;
-
-        // Draw the player with offset
-        let player_pos = self.player.position;
-        let player_mesh = graphics::Mesh::new_rectangle(
-            ctx,
-            graphics::DrawMode::fill(),
-            graphics::Rect::new(
-                player_pos.0 as f32 * self.cell_size,
-                player_pos.1 as f32 * self.cell_size,
-                self.cell_size,
-                self.cell_size * self.player.body_size as f32,
-            ),
-            Color::RED,
-        )?;
-        canvas.draw(&player_mesh, graphics::DrawParam::default().dest([0.0, y_offset]));
-        
-        // Draw the blocks with offset
-        for block in &self.blocks {
-            let (x, y) = block.position;
-            let block_mesh = graphics::Mesh::new_rectangle(
-                ctx,
-                graphics::DrawMode::fill(),
-                graphics::Rect::new(
-                    x as f32 * self.cell_size,
-                    y as f32 * self.cell_size,
-                    self.cell_size,
-                    self.cell_size,
-                ),
-                Color::BLACK,
-            )?;
-            canvas.draw(&block_mesh, graphics::DrawParam::default().dest([0.0, y_offset]));
-        }
-        
-        // Draw "Game Over" text if the game is over
-        if self.game_over {
-            let window_width = self.grid_size as f32 * self.cell_size;
-            let window_height = window_width + self.cell_size; // Include score bar height
-            let game_over_text = Text::new("Game Over");
-            
-            // Position text in the center of the screen
-            let text_x = window_width / 2.0;
-            let text_y = window_height / 2.0;
-            
-            canvas.draw(
-                &game_over_text, 
-                graphics::DrawParam::default()
-                    .dest([text_x, text_y])
-                    .color(Color::RED)
-                    .scale([2.0, 2.0])
-                    .offset([0.5, 0.5])  // Center the text at the destination point
-            );
-        }
+        self.draw_player(ctx, &mut canvas, y_offset)?;
+        self.draw_blocks(ctx, &mut canvas, y_offset)?;
+        self.draw_game_over(&mut canvas)?;
 
         canvas.finish(ctx)?;
         Ok(())
@@ -389,7 +297,6 @@ impl EventHandler for GridGame {
         Ok(())
     }
     
-    // Add mouse button event handler
     fn mouse_button_down_event(
         &mut self,
         _ctx: &mut Context,
@@ -403,6 +310,131 @@ impl EventHandler for GridGame {
                 self.restart_game();
             }
         }
+        Ok(())
+    }
+}
+
+// Add new drawing methods to GridGame
+impl GridGame {
+    fn draw_score_bar(&self, ctx: &mut Context, canvas: &mut graphics::Canvas) -> GameResult {
+        let score_bar = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(
+                0.0,
+                0.0,
+                self.grid_size as f32 * self.cell_size,
+                self.cell_size,
+            ),
+            Color::BLUE,
+        )?;
+        canvas.draw(&score_bar, graphics::DrawParam::default());
+        
+        let score_text = Text::new(format!("Score: {}", self.score));
+        let text_x = 10.0; // Left padding
+        let text_y = self.cell_size / 2.0;
+        
+        canvas.draw(
+            &score_text, 
+            graphics::DrawParam::default()
+                .dest([text_x, text_y])
+                .color(Color::WHITE)
+                .offset([0.0, 0.5]) // Center vertically
+        );
+        
+        Ok(())
+    }
+
+    fn draw_restart_button(&mut self, ctx: &mut Context, canvas: &mut graphics::Canvas) -> GameResult {
+        let button_width = 80.0;
+        let button_height = self.cell_size * 0.8;
+        let button_x = self.grid_size as f32 * self.cell_size - button_width - 10.0;
+        let button_y = (self.cell_size - button_height) / 2.0;
+        
+        self.restart_button = graphics::Rect::new(button_x, button_y, button_width, button_height);
+        
+        let restart_button_mesh = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            self.restart_button,
+            Color::GREEN,
+        )?;
+        canvas.draw(&restart_button_mesh, graphics::DrawParam::default());
+        
+        let restart_text = Text::new("Restart");
+        let restart_text_x = button_x + button_width / 2.0;
+        let restart_text_y = button_y + button_height / 2.0;
+        
+        canvas.draw(
+            &restart_text, 
+            graphics::DrawParam::default()
+                .dest([restart_text_x, restart_text_y])
+                .color(Color::BLACK)
+                .offset([0.5, 0.5])
+        );
+        
+        Ok(())
+    }
+
+    fn draw_player(&self, ctx: &mut Context, canvas: &mut graphics::Canvas, y_offset: f32) -> GameResult {
+        let player_pos = self.player.position;
+        let player_mesh = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(
+                player_pos.0 as f32 * self.cell_size,
+                player_pos.1 as f32 * self.cell_size,
+                self.cell_size,
+                self.cell_size * self.player.body_size as f32,
+            ),
+            Color::RED,
+        )?;
+        canvas.draw(&player_mesh, graphics::DrawParam::default().dest([0.0, y_offset]));
+        
+        Ok(())
+    }
+
+    fn draw_blocks(&self, ctx: &mut Context, canvas: &mut graphics::Canvas, y_offset: f32) -> GameResult {
+        for block in &self.blocks {
+            let (x, y) = block.position;
+            let block_mesh = graphics::Mesh::new_rectangle(
+                ctx,
+                graphics::DrawMode::fill(),
+                graphics::Rect::new(
+                    x as f32 * self.cell_size,
+                    y as f32 * self.cell_size,
+                    self.cell_size,
+                    self.cell_size,
+                ),
+                Color::BLACK,
+            )?;
+            canvas.draw(&block_mesh, graphics::DrawParam::default().dest([0.0, y_offset]));
+        }
+        
+        Ok(())
+    }
+
+    fn draw_game_over(&self, canvas: &mut graphics::Canvas) -> GameResult {
+        if !self.game_over {
+            return Ok(());
+        }
+        
+        let window_width = self.grid_size as f32 * self.cell_size;
+        let window_height = window_width + self.cell_size;
+        let game_over_text = Text::new("Game Over");
+        
+        let text_x = window_width / 2.0;
+        let text_y = window_height / 2.0;
+        
+        canvas.draw(
+            &game_over_text, 
+            graphics::DrawParam::default()
+                .dest([text_x, text_y])
+                .color(Color::RED)
+                .scale([2.0, 2.0])
+                .offset([0.5, 0.5])
+        );
+        
         Ok(())
     }
 }

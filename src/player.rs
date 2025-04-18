@@ -143,7 +143,12 @@ impl Player {
             self.position.0 = target_x;
         }
         
-        // Check for support after moving horizontally (only if not jumping or already falling)
+        // Check for support after moving horizontally
+        self.check_support_after_move(grid_size, blocks);
+    }
+    
+    // New method to check support after horizontal movement
+    fn check_support_after_move(&mut self, grid_size: usize, blocks: &[Block]) {
         if !self.in_air && !self.is_falling && !self.has_support(blocks, grid_size) {
             // Start the fall delay immediately with the full delay value
             self.fall_delay_counter = FALL_DELAY;
@@ -174,25 +179,27 @@ impl Player {
     fn handle_block_collision(&mut self, block_idx: usize, move_by: isize, target_x: usize, 
                              grid_size: usize, blocks: &mut [Block]) {
         let block = &blocks[block_idx];
-        let block_x = block.position.0;
         
-        // Check if the block can move in this direction based on grid boundaries
-        let block_can_move = if move_by < 0 {
-            block_x > 0
-        } else {
-            block_x < grid_size - 1
-        };
-        
-        if !block_can_move {
+        // Check if the block can move in this direction
+        if !self.can_block_move_in_direction(block.position.0, move_by, grid_size) {
             return;
         }
         
-        let block_target_x = (block_x as isize + move_by) as usize;
+        let block_target_x = (block.position.0 as isize + move_by) as usize;
         
         if block.falling {
             self.handle_falling_block_movement(block_idx, block_target_x, target_x, blocks);
         } else {
-            self.handle_normal_block_movement(block_x, block_target_x, target_x, blocks);
+            self.handle_normal_block_movement(block.position.0, block_target_x, target_x, blocks);
+        }
+    }
+    
+    // New method to check if a block can move in a direction
+    fn can_block_move_in_direction(&self, block_x: usize, move_by: isize, grid_size: usize) -> bool {
+        if move_by < 0 {
+            block_x > 0
+        } else {
+            block_x < grid_size - 1
         }
     }
     

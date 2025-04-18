@@ -128,6 +128,11 @@ impl Player {
     
     // Private helper method to handle horizontal movement - refactored for clarity
     fn move_horizontal(&mut self, move_by: isize, grid_size: usize, blocks: &mut [Block]) {
+        // Don't allow movement if player is about to fall (fall delay is active)
+        if self.fall_delay_counter > 0 {
+            return;
+        }
+
         // Check if movement is possible based on grid boundaries
         if !self.can_move_in_direction(move_by, grid_size) {
             return;
@@ -150,7 +155,7 @@ impl Player {
     // New method to check support after horizontal movement
     fn check_support_after_move(&mut self, grid_size: usize, blocks: &[Block]) {
         if !self.in_air && !self.is_falling && !self.has_support(blocks, grid_size) {
-            // Start the fall delay immediately with the full delay value
+            // Start the fall delay instead of immediately falling
             self.fall_delay_counter = FALL_DELAY;
         }
     }

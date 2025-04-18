@@ -2,6 +2,9 @@ use ggez::graphics::{self, Color, DrawParam};
 use ggez::{Context, GameResult};
 use crate::block::Block;
 
+// Add a constant for fall delay duration
+const FALL_DELAY: u8 = 3; // Number of update cycles to wait before falling
+
 pub struct Player {
     pub position: (usize, usize),
     pub in_air: bool,  // Track jump state
@@ -9,6 +12,7 @@ pub struct Player {
     jump_counter: u8,  // Track how long to stay in the air
     just_jumped: bool, // Flag to prevent immediate landing
     pub body_size: usize, // Store the player's vertical size
+    fall_delay_counter: u8, // Counter for delaying fall
 }
 
 impl Player {
@@ -21,6 +25,7 @@ impl Player {
             jump_counter: 0,
             just_jumped: false,
             body_size: body_height,
+            fall_delay_counter: 0,
         }
     }
     
@@ -62,12 +67,23 @@ impl Player {
     
     // Update player's falling state
     pub fn update_falling_state(&mut self, blocks: &[Block], grid_size: usize) {
-        // Only check for falling if not already in a jumping action
-        if !self.in_air && !self.just_jumped {
-            // Check if there's no support beneath the player
-            if !self.has_support(blocks, grid_size) {
-                self.is_falling = true;
+        // Don't check for falling during active jumps
+        if self.in_air {
+            return;
+        }
+        
+        // Check if there's no support beneath the player
+        if !self.has_support(blocks, grid_size) {
+            // If we're not already falling and not already delaying a fall
+            if !self.is_falling && self.fall_delay_counter == 0 {
+                // Start the fall delay
+                self.fall_delay_counter = FALL_DELAY;
             }
+            // Note: We don't set is_falling=true here anymore, that happens in update_fall_delay
+        } else {
+            // We have support, so reset falling states
+            self.is_falling = false;
+            self.fall_delay_counter = 0;
         }
     }
     
@@ -75,6 +91,18 @@ impl Player {
     pub fn apply_gravity(&mut self) {
         if self.is_falling && self.position.1 < usize::MAX - 1 {
             self.position.1 += 1;  // Move down one block
+        }
+    }
+    
+    // Update fall delay counter
+    pub fn update_fall_delay(&mut self) {
+        if self.fall_delay_counter > 0 {
+            self.fall_delay_counter -= 1;
+            
+            // When counter reaches zero, start falling if there's no support
+            if self.fall_delay_counter == 0 && !self.in_air {
+                self.is_falling = true;
+            }
         }
     }
     
@@ -115,6 +143,12 @@ impl Player {
         } else {
             // No block, move freely
             self.position.0 = target_x;
+        }
+        
+        // Check for support after moving horizontally (only if not jumping or already falling)
+        if !self.in_air && !self.is_falling && !self.has_support(blocks, grid_size) {
+            // Start the fall delay immediately with the full delay value
+            self.fall_delay_counter = FALL_DELAY;
         }
     }
     

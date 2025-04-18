@@ -141,6 +141,9 @@ impl GridGame {
         // Update jump counter first
         self.player.update_jump();
         
+        // Update fall delay counter
+        self.player.update_fall_delay();
+        
         // Check if player should start falling
         self.player.update_falling_state(&self.blocks, self.grid_size);
         

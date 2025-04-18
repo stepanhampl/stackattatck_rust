@@ -16,8 +16,17 @@ pub struct Player {
 impl Player {
     pub fn new(grid_size: usize) -> Self {
         let body_height = 2; // Store body size as a variable
+        
+        // Calculate starting x position (middle of grid)
+        // If even grid size, place a bit to the left of center
+        let start_x = if grid_size % 2 == 0 {
+            grid_size / 2 - 1 // Even grid size, place left of center
+        } else {
+            grid_size / 2     // Odd grid size, place at center
+        };
+        
         Self {
-            position: (0, grid_size - body_height), // Start at bottom left
+            position: (start_x, grid_size - body_height), // Start at bottom middle
             in_air: false,
             is_falling: false,
             jump_counter: 0,

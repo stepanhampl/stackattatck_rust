@@ -6,7 +6,8 @@ pub fn draw_grid(
     ctx: &mut Context, 
     canvas: &mut graphics::Canvas,
     grid_size: usize,
-    cell_size: f32
+    cell_size: f32,
+    y_offset: f32, // New parameter for vertical offset
 ) -> GameResult {
     // Draw the grid lines
     for i in 0..=grid_size {
@@ -16,8 +17,8 @@ pub fn draw_grid(
         let h_line = Mesh::new_line(
             ctx,
             &[
-                Vec2::new(0.0, position),
-                Vec2::new(cell_size * grid_size as f32, position),
+                Vec2::new(0.0, position + y_offset),
+                Vec2::new(cell_size * grid_size as f32, position + y_offset),
             ],
             1.0,
             Color::BLACK,
@@ -27,8 +28,8 @@ pub fn draw_grid(
         let v_line = Mesh::new_line(
             ctx,
             &[
-                Vec2::new(position, 0.0),
-                Vec2::new(position, cell_size * grid_size as f32),
+                Vec2::new(position, y_offset),
+                Vec2::new(position, cell_size * grid_size as f32 + y_offset),
             ],
             1.0,
             Color::BLACK,

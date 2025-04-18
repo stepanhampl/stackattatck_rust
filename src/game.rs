@@ -20,6 +20,7 @@ pub struct GridGame {
     block_spawn_rate: u64,  // How many refresh cycles between new blocks
     block_spawn_counter: u64, // Counter for block spawning
     game_over: bool,
+    score: u32, // Add a score counter
 }
 
 impl GridGame {
@@ -36,6 +37,7 @@ impl GridGame {
             block_spawn_rate,
             block_spawn_counter: 0,
             game_over: false,
+            score: 0, // Initialize score to 0
         };
         
         // Spawn the first block
@@ -96,6 +98,9 @@ impl GridGame {
             if blocks_in_row == self.grid_size {
                 // Remove all blocks in this row
                 self.blocks.retain(|block| block.position.1 != row);
+                
+                // Increment the score
+                self.score += 1;
                 
                 // Check for blocks that are now levitating after removing the row
                 self.check_for_levitating_blocks();
@@ -225,25 +230,80 @@ impl EventHandler for GridGame {
         // Clear screen with white background (for white squares)
         let mut canvas = graphics::Canvas::from_frame(ctx, Color::WHITE);
 
-        // Draw the grid
-        draw_grid(ctx, &mut canvas, self.grid_size, self.cell_size)?;
-
-        // Draw the player
-        self.player.draw(ctx, &mut canvas, self.cell_size)?;
+        // Draw the score bar
+        let score_bar = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(
+                0.0,
+                0.0,
+                self.grid_size as f32 * self.cell_size,
+                self.cell_size,
+            ),
+            Color::BLUE,
+        )?;
+        canvas.draw(&score_bar, graphics::DrawParam::default());
         
-        // Draw the blocks
-        for block in &self.blocks {
-            block.draw(ctx, &mut canvas, self.cell_size)?;
-        }
+        // Draw the score text
+        let score_text = Text::new(format!("Score: {}", self.score));
+        let text_x = 10.0; // Left padding
+        let text_y = self.cell_size / 2.0;
+        
+        canvas.draw(
+            &score_text, 
+            graphics::DrawParam::default()
+                .dest([text_x, text_y])
+                .color(Color::WHITE)
+                .offset([0.0, 0.5]) // Center vertically
+        );
 
+        // Define the offset for all game elements
+        let y_offset = self.cell_size;
+
+        // Draw the grid with offset
+        draw_grid(ctx, &mut canvas, self.grid_size, self.cell_size, y_offset)?;
+
+        // Draw the player with offset
+        let player_pos = self.player.position;
+        let player_mesh = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            graphics::Rect::new(
+                player_pos.0 as f32 * self.cell_size,
+                player_pos.1 as f32 * self.cell_size,
+                self.cell_size,
+                self.cell_size * self.player.body_size as f32,
+            ),
+            Color::RED,
+        )?;
+        canvas.draw(&player_mesh, graphics::DrawParam::default().dest([0.0, y_offset]));
+        
+        // Draw the blocks with offset
+        for block in &self.blocks {
+            let (x, y) = block.position;
+            let block_mesh = graphics::Mesh::new_rectangle(
+                ctx,
+                graphics::DrawMode::fill(),
+                graphics::Rect::new(
+                    x as f32 * self.cell_size,
+                    y as f32 * self.cell_size,
+                    self.cell_size,
+                    self.cell_size,
+                ),
+                Color::BLACK,
+            )?;
+            canvas.draw(&block_mesh, graphics::DrawParam::default().dest([0.0, y_offset]));
+        }
+        
         // Draw "Game Over" text if the game is over
         if self.game_over {
-            let window_size = self.grid_size as f32 * self.cell_size;
+            let window_width = self.grid_size as f32 * self.cell_size;
+            let window_height = window_width + self.cell_size; // Include score bar height
             let game_over_text = Text::new("Game Over");
             
             // Position text in the center of the screen
-            let text_x = window_size / 2.0;
-            let text_y = window_size / 2.0;
+            let text_x = window_width / 2.0;
+            let text_y = window_height / 2.0;
             
             canvas.draw(
                 &game_over_text, 

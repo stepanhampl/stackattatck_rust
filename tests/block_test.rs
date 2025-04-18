@@ -21,3 +21,28 @@ fn test_spawn_random_block() {
     // Check that block is falling
     assert!(block.falling);
 }
+
+#[test]
+fn test_block_carrying_state() {
+    let mut block = Block::new((5, 5));
+    
+    // Initially blocks are not carried
+    assert!(!block.carried);
+    assert_eq!(block.carrying_direction, None);
+    
+    // Test setting carried state for rightward movement
+    block.carried = true;
+    block.carrying_direction = Some(1);
+    assert!(block.carried);
+    assert_eq!(block.carrying_direction, Some(1));
+    
+    // Test setting carried state for leftward movement
+    block.carrying_direction = Some(-1);
+    assert_eq!(block.carrying_direction, Some(-1));
+    
+    // Test resetting carried state
+    block.carried = false;
+    block.carrying_direction = None;
+    assert!(!block.carried);
+    assert_eq!(block.carrying_direction, None);
+}

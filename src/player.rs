@@ -98,7 +98,8 @@ impl Player {
     
     // Apply gravity to make player fall
     pub fn apply_gravity(&mut self) {
-        if self.is_falling && self.position.1 < usize::MAX - 1 {
+        // Only apply gravity if player is falling AND not already at the bottom boundary
+        if self.is_falling && self.position.1 < self.grid_size - self.body_size {
             self.position.1 += 1;  // Move down one block
         }
     }
@@ -126,8 +127,9 @@ impl Player {
                 self.in_air = false;
                 self.is_falling = true;
             } else {
-                // Land properly after jumping
+                // Land properly after jumping with support
                 self.in_air = false;
+                self.is_falling = false; // Explicitly reset falling flag
             }
         }
         
@@ -356,6 +358,11 @@ impl Player {
     
     // Check if the path is clear for all blocks to move
     fn is_path_clear_for_blocks(&self, pushable_indices: &[usize], target_x: usize, blocks: &[Block]) -> bool {
+        // Check if the target position is outside the grid boundary
+        if target_x >= self.grid_size {
+            return false;
+        }
+
         for &idx in pushable_indices {
             let (_, y) = blocks[idx].position;
             let target = (target_x, y);

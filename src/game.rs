@@ -4,8 +4,8 @@ use ggez::input::keyboard::{KeyInput, KeyCode};
 use ggez::input::mouse::MouseButton;
 use ggez::{Context, GameError, GameResult};
 use std::time::{Duration, Instant};
-use std::collections::HashSet; // Add this import
-use std::collections::VecDeque; // Add this import for tracking key order
+use std::collections::HashSet;
+use std::collections::VecDeque;
 
 use crate::block::{Block, spawn_random_block};
 use crate::player::Player;
@@ -14,21 +14,21 @@ use crate::rendering::draw_grid;
 pub struct GridGame {
     pub grid_size: usize,
     pub cell_size: f32,
-    player: Player,
-    last_update: Instant,
-    pending_move: Option<KeyCode>,
-    held_keys: HashSet<KeyCode>, // Track keys that are currently being held down
-    keys_pressed_since_update: Vec<KeyCode>, // Track keys pressed since last update
-    direction_press_order: VecDeque<KeyCode>, // Track order of direction key presses
-    refresh_rate_milliseconds: u64,
-    blocks: Vec<Block>,
-    block_fall_speed: usize,
-    block_spawn_rate: u64,  // How many refresh cycles between new blocks
-    block_spawn_counter: u64, // Counter for block spawning
-    game_over: bool,
-    score: u32, // Add a score counter
-    restart_button: graphics::Rect, // Store the restart button area
-    last_move_direction: Option<isize>, // Track the last movement direction
+    pub player: Player,
+    pub last_update: Instant,
+    pub pending_move: Option<KeyCode>,
+    pub held_keys: HashSet<KeyCode>,
+    pub keys_pressed_since_update: Vec<KeyCode>,
+    pub direction_press_order: VecDeque<KeyCode>,
+    pub refresh_rate_milliseconds: u64,
+    pub blocks: Vec<Block>,
+    pub block_fall_speed: usize,
+    pub block_spawn_rate: u64,
+    pub block_spawn_counter: u64,
+    pub game_over: bool,
+    pub score: u32,
+    pub restart_button: graphics::Rect,
+    pub last_move_direction: Option<isize>,
 }
 
 impl GridGame {
@@ -39,18 +39,18 @@ impl GridGame {
             player: Player::new(grid_size),
             last_update: Instant::now(),
             pending_move: None,
-            held_keys: HashSet::new(), // Initialize the set of held keys
-            keys_pressed_since_update: Vec::new(), // Initialize the keys pressed since update
-            direction_press_order: VecDeque::new(), // Initialize order tracking
+            held_keys: HashSet::new(),
+            keys_pressed_since_update: Vec::new(),
+            direction_press_order: VecDeque::new(),
             refresh_rate_milliseconds,
             blocks: Vec::new(),
             block_fall_speed,
             block_spawn_rate,
             block_spawn_counter: 0,
             game_over: false,
-            score: 0, // Initialize score to 0
-            restart_button: graphics::Rect::new(0.0, 0.0, 0.0, 0.0), // Will be set in draw
-            last_move_direction: None, // Initialize with no direction
+            score: 0,
+            restart_button: graphics::Rect::new(0.0, 0.0, 0.0, 0.0),
+            last_move_direction: None,
         };
         
         // Spawn the first block
@@ -60,14 +60,14 @@ impl GridGame {
     }
 
     // Add restart game method to reset game state
-    fn restart_game(&mut self) {
+    pub fn restart_game(&mut self) {
         self.player = Player::new(self.grid_size);
         self.blocks.clear();
         self.last_update = Instant::now();
         self.pending_move = None;
-        self.held_keys.clear(); // Clear held keys on restart
-        self.keys_pressed_since_update.clear(); // Clear pressed keys on restart
-        self.direction_press_order.clear(); // Clear direction order on restart
+        self.held_keys.clear();
+        self.keys_pressed_since_update.clear();
+        self.direction_press_order.clear();
         self.block_spawn_counter = 0;
         self.game_over = false;
         self.score = 0;
@@ -77,11 +77,11 @@ impl GridGame {
         self.spawn_block();
     }
 
-    fn spawn_block(&mut self) {
+    pub fn spawn_block(&mut self) {
         self.blocks.push(spawn_random_block(self.grid_size));
     }
 
-    fn check_for_levitating_blocks(&mut self) {
+    pub fn check_for_levitating_blocks(&mut self) {
         let mut blocks_changed = false;
         
         for i in 0..self.blocks.len() {
@@ -117,7 +117,7 @@ impl GridGame {
         }
     }
 
-    fn check_full_rows(&mut self) {
+    pub fn check_full_rows(&mut self) {
         // Check each row from the bottom up
         for row in (0..self.grid_size).rev() {
             // Count non-falling blocks in this row
@@ -143,14 +143,14 @@ impl GridGame {
         }
     }
 
-    fn update_blocks(&mut self) {
+    pub fn update_blocks(&mut self) {
         self.update_falling_blocks();
         self.handle_block_spawning();
         self.check_for_levitating_blocks();
         self.check_full_rows();
     }
 
-    fn update_falling_blocks(&mut self) {
+    pub fn update_falling_blocks(&mut self) {
         for i in 0..self.blocks.len() {
             // Skip blocks that are currently being carried
             if self.blocks[i].carried {
@@ -180,7 +180,7 @@ impl GridGame {
         }
     }
 
-    fn check_block_player_collision(&mut self, x: usize, new_y: usize) -> bool {
+    pub fn check_block_player_collision(&mut self, x: usize, new_y: usize) -> bool {
         let (player_x, player_y) = self.player.position;
         if x == player_x && new_y == player_y {
             self.game_over = true;
@@ -189,7 +189,7 @@ impl GridGame {
         false
     }
 
-    fn check_block_bottom_collision(&mut self, block_idx: usize, new_y: usize) -> bool {
+    pub fn check_block_bottom_collision(&mut self, block_idx: usize, new_y: usize) -> bool {
         if new_y >= self.grid_size {
             self.blocks[block_idx].position.1 = self.grid_size - 1;
             self.blocks[block_idx].falling = false;
@@ -198,7 +198,7 @@ impl GridGame {
         false
     }
 
-    fn check_block_block_collision(&self, block_idx: usize, x: usize, new_y: usize) -> bool {
+    pub fn check_block_block_collision(&self, block_idx: usize, x: usize, new_y: usize) -> bool {
         for j in 0..self.blocks.len() {
             if block_idx != j && !self.blocks[j].falling && 
                self.blocks[j].position.0 == x && 
@@ -209,7 +209,7 @@ impl GridGame {
         false
     }
 
-    fn handle_block_spawning(&mut self) {
+    pub fn handle_block_spawning(&mut self) {
         self.block_spawn_counter += 1;
         if self.block_spawn_counter >= self.block_spawn_rate {
             self.spawn_block();
@@ -217,7 +217,7 @@ impl GridGame {
         }
     }
 
-    fn update_player(&mut self) {
+    pub fn update_player(&mut self) {
         // Update jump counter first
         self.player.update_jump();
         
@@ -237,7 +237,7 @@ impl GridGame {
     }
 
     // Determine the current movement direction based on held keys
-    fn get_current_movement_direction(&self) -> Option<isize> {
+    pub fn get_current_movement_direction(&self) -> Option<isize> {
         if self.held_keys.contains(&KeyCode::Left) {
             Some(-1)
         } else if self.held_keys.contains(&KeyCode::Right) {
@@ -248,7 +248,7 @@ impl GridGame {
     }
     
     // New method to determine which movement to process based on key press priority
-    fn determine_movement(&mut self) -> Option<KeyCode> {
+    pub fn determine_movement(&mut self) -> Option<KeyCode> {
         // If no keys were pressed, return None
         if self.keys_pressed_since_update.is_empty() {
             return None;
@@ -265,19 +265,6 @@ impl GridGame {
         }
         
         None
-    }
-
-    // Add these new methods to support testing
-    pub fn get_score(&self) -> u32 {
-        self.score
-    }
-    
-    pub fn is_game_over(&self) -> bool {
-        self.game_over
-    }
-    
-    pub fn get_blocks(&self) -> &Vec<Block> {
-        &self.blocks
     }
 }
 

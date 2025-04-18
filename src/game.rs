@@ -5,6 +5,7 @@ use ggez::input::mouse::MouseButton;
 use ggez::{Context, GameError, GameResult};
 use std::time::{Duration, Instant};
 use std::collections::HashSet; // Add this import
+use std::collections::VecDeque; // Add this import for tracking key order
 
 use crate::block::{Block, spawn_random_block};
 use crate::player::Player;
@@ -17,6 +18,8 @@ pub struct GridGame {
     last_update: Instant,
     pending_move: Option<KeyCode>,
     held_keys: HashSet<KeyCode>, // Track keys that are currently being held down
+    keys_pressed_since_update: Vec<KeyCode>, // Track keys pressed since last update
+    direction_press_order: VecDeque<KeyCode>, // Track order of direction key presses
     refresh_rate_milliseconds: u64,
     blocks: Vec<Block>,
     block_fall_speed: usize,
@@ -37,6 +40,8 @@ impl GridGame {
             last_update: Instant::now(),
             pending_move: None,
             held_keys: HashSet::new(), // Initialize the set of held keys
+            keys_pressed_since_update: Vec::new(), // Initialize the keys pressed since update
+            direction_press_order: VecDeque::new(), // Initialize order tracking
             refresh_rate_milliseconds,
             blocks: Vec::new(),
             block_fall_speed,
@@ -61,6 +66,8 @@ impl GridGame {
         self.last_update = Instant::now();
         self.pending_move = None;
         self.held_keys.clear(); // Clear held keys on restart
+        self.keys_pressed_since_update.clear(); // Clear pressed keys on restart
+        self.direction_press_order.clear(); // Clear direction order on restart
         self.block_spawn_counter = 0;
         self.game_over = false;
         self.score = 0;
@@ -239,6 +246,26 @@ impl GridGame {
             None
         }
     }
+    
+    // New method to determine which movement to process based on key press priority
+    fn determine_movement(&mut self) -> Option<KeyCode> {
+        // If no keys were pressed, return None
+        if self.keys_pressed_since_update.is_empty() {
+            return None;
+        }
+        
+        // Check if "Up" was pressed, prioritize jump
+        if self.keys_pressed_since_update.contains(&KeyCode::Up) {
+            return Some(KeyCode::Up);
+        }
+        
+        // If we have direction keys in the order queue, return the last one
+        if !self.direction_press_order.is_empty() {
+            return Some(self.direction_press_order.back().cloned().unwrap());
+        }
+        
+        None
+    }
 }
 
 impl EventHandler for GridGame {
@@ -257,33 +284,42 @@ impl EventHandler for GridGame {
             // Use the current direction for releasing/maintaining carried blocks
             self.player.release_carried_blocks(&mut self.blocks, current_direction);
             
-            // Set pending move based on held keys (for continuous movement)
+            // Add held direction keys to the keys_pressed_since_update for continuous movement
+            // This ensures continuous movement as long as keys are held down
             if self.held_keys.contains(&KeyCode::Left) {
-                self.pending_move = Some(KeyCode::Left);
-            } else if self.held_keys.contains(&KeyCode::Right) {
-                self.pending_move = Some(KeyCode::Right);
-            } else if self.held_keys.contains(&KeyCode::Up) {
-                self.pending_move = Some(KeyCode::Up);
+                self.keys_pressed_since_update.push(KeyCode::Left);
+                if !self.direction_press_order.contains(&KeyCode::Left) {
+                    self.direction_press_order.push_back(KeyCode::Left);
+                }
+            }
+            if self.held_keys.contains(&KeyCode::Right) {
+                self.keys_pressed_since_update.push(KeyCode::Right);
+                if !self.direction_press_order.contains(&KeyCode::Right) {
+                    self.direction_press_order.push_back(KeyCode::Right);
+                }
             }
             
-            // Process pending move
-            if let Some(key) = self.pending_move {
+            // Process the key presses according to priority rules
+            if let Some(key) = self.determine_movement() {
                 match key {
                     KeyCode::Left => self.player.move_left(&mut self.blocks),
                     KeyCode::Right => self.player.move_right(self.grid_size, &mut self.blocks),
                     KeyCode::Up => {
-                        // Only jump if we haven't already jumped (prevent continuous jumping)
+                        // Only jump if we haven't already jumped
                         if !self.player.in_air {
                             self.player.jump();
                         }
                     },
                     _ => {}
                 }
-                self.pending_move = None;
                 
                 // Check for levitating blocks after player moves a block
                 self.check_for_levitating_blocks();
             }
+            
+            // Clear keys pressed since update and direction order
+            self.keys_pressed_since_update.clear();
+            self.direction_press_order.clear();
 
             // Update player (handles landing after jump)
             self.update_player();
@@ -332,8 +368,19 @@ impl EventHandler for GridGame {
                 KeyCode::Left | KeyCode::Right | KeyCode::Up => {
                     // Add to held keys
                     self.held_keys.insert(keycode);
-                    // Also set as pending move for immediate action
-                    self.pending_move = Some(keycode);
+                    
+                    // Add to keys pressed since update
+                    self.keys_pressed_since_update.push(keycode);
+                    
+                    // Update direction order for left/right keys
+                    if keycode == KeyCode::Left || keycode == KeyCode::Right {
+                        // Remove the key if it's already in the queue (to update its position)
+                        if let Some(pos) = self.direction_press_order.iter().position(|&k| k == keycode) {
+                            self.direction_press_order.remove(pos);
+                        }
+                        // Add it to the back (most recent)
+                        self.direction_press_order.push_back(keycode);
+                    }
                 },
                 _ => {}
             }
@@ -367,12 +414,25 @@ impl EventHandler for GridGame {
             // Remove from held keys when released
             self.held_keys.remove(&keycode);
             
-            // Clear pending move if it matches this key
-            if self.pending_move == Some(keycode) {
-                self.pending_move = None;
+            // If up arrow is released and a direction key is still held,
+            // add that direction key to keys_pressed_since_update to continue movement
+            if keycode == KeyCode::Up {
+                if self.held_keys.contains(&KeyCode::Left) {
+                    self.keys_pressed_since_update.push(KeyCode::Left);
+                    // Make sure it's also in the direction queue
+                    if !self.direction_press_order.contains(&KeyCode::Left) {
+                        self.direction_press_order.push_back(KeyCode::Left);
+                    }
+                } else if self.held_keys.contains(&KeyCode::Right) {
+                    self.keys_pressed_since_update.push(KeyCode::Right);
+                    // Make sure it's also in the direction queue
+                    if !self.direction_press_order.contains(&KeyCode::Right) {
+                        self.direction_press_order.push_back(KeyCode::Right);
+                    }
+                }
             }
             
-            // Clear direction if releasing a movement key
+            // Clear last_move_direction if releasing a movement key
             match keycode {
                 KeyCode::Left => {
                     if self.last_move_direction == Some(-1) {

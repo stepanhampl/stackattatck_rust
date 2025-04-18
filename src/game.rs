@@ -1,6 +1,7 @@
 use ggez::event::EventHandler;
 use ggez::graphics::{self, Color, Text};
 use ggez::input::keyboard::{KeyInput, KeyCode};
+use ggez::input::mouse::MouseButton;
 use ggez::{Context, GameError, GameResult};
 use std::time::{Duration, Instant};
 
@@ -21,6 +22,7 @@ pub struct GridGame {
     block_spawn_counter: u64, // Counter for block spawning
     game_over: bool,
     score: u32, // Add a score counter
+    restart_button: graphics::Rect, // Store the restart button area
 }
 
 impl GridGame {
@@ -38,12 +40,27 @@ impl GridGame {
             block_spawn_counter: 0,
             game_over: false,
             score: 0, // Initialize score to 0
+            restart_button: graphics::Rect::new(0.0, 0.0, 0.0, 0.0), // Will be set in draw
         };
         
         // Spawn the first block
         game.spawn_block();
         
         game
+    }
+
+    // Add restart game method to reset game state
+    fn restart_game(&mut self) {
+        self.player = Player::new(self.grid_size);
+        self.blocks.clear();
+        self.last_update = Instant::now();
+        self.pending_move = None;
+        self.block_spawn_counter = 0;
+        self.game_over = false;
+        self.score = 0;
+        
+        // Spawn the first block for the new game
+        self.spawn_block();
     }
 
     fn spawn_block(&mut self) {
@@ -256,6 +273,36 @@ impl EventHandler for GridGame {
                 .color(Color::WHITE)
                 .offset([0.0, 0.5]) // Center vertically
         );
+        
+        // Create and draw restart button
+        let button_width = 80.0;
+        let button_height = self.cell_size * 0.8;
+        let button_x = self.grid_size as f32 * self.cell_size - button_width - 10.0; // Right aligned with padding
+        let button_y = (self.cell_size - button_height) / 2.0; // Centered vertically
+        
+        // Store the button area for hit detection
+        self.restart_button = graphics::Rect::new(button_x, button_y, button_width, button_height);
+        
+        let restart_button_mesh = graphics::Mesh::new_rectangle(
+            ctx,
+            graphics::DrawMode::fill(),
+            self.restart_button,
+            Color::GREEN, // Use a different color to make it stand out
+        )?;
+        canvas.draw(&restart_button_mesh, graphics::DrawParam::default());
+        
+        // Draw restart text
+        let restart_text = Text::new("Restart");
+        let restart_text_x = button_x + button_width / 2.0;
+        let restart_text_y = button_y + button_height / 2.0;
+        
+        canvas.draw(
+            &restart_text, 
+            graphics::DrawParam::default()
+                .dest([restart_text_x, restart_text_y])
+                .color(Color::BLACK)
+                .offset([0.5, 0.5]) // Center the text
+        );
 
         // Define the offset for all game elements
         let y_offset = self.cell_size;
@@ -337,6 +384,23 @@ impl EventHandler for GridGame {
                     self.pending_move = Some(keycode);
                 },
                 _ => {}
+            }
+        }
+        Ok(())
+    }
+    
+    // Add mouse button event handler
+    fn mouse_button_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        button: MouseButton,
+        x: f32,
+        y: f32,
+    ) -> Result<(), GameError> {
+        if button == MouseButton::Left {
+            // Check if click was inside the restart button
+            if self.restart_button.contains([x, y]) {
+                self.restart_game();
             }
         }
         Ok(())

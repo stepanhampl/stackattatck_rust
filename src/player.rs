@@ -134,28 +134,79 @@ impl Player {
                     let block_target_x = (block_x as isize + move_by) as usize;
                     
                     if !block.falling {
-                        // Case: Moving a non-falling block
-                        // Find all non-falling blocks in the same vertical column
-                        let column_block_indices: Vec<usize> = blocks.iter()
+                        // Define the player's body range
+                        let player_top = self.position.1;
+                        let player_bottom = self.position.1 + self.body_size - 1;
+                        
+                        // Collect all non-falling blocks in this column
+                        let mut column_blocks: Vec<(usize, usize)> = blocks.iter()
                             .enumerate()
                             .filter_map(|(i, b)| {
                                 if b.position.0 == block_x && !b.falling {
-                                    Some(i)
+                                    Some((i, b.position.1))
                                 } else {
                                     None
                                 }
                             })
                             .collect();
                         
-                        // Check if any block in the column would be blocked
+                        // Sort by y-coordinate (top to bottom)
+                        column_blocks.sort_by_key(|&(_, y)| y);
+                        
+                        // Determine which blocks are pushable:
+                        // - Only blocks at the player's body level or above are pushable
+                        // - Blocks above must form a connected column with pushable blocks
+                        
+                        let mut pushable_indices = Vec::new();
+                        let mut pushable_y_coords = Vec::new();
+                        
+                        // First, mark blocks at player's body level as pushable
+                        for &(idx, y) in &column_blocks {
+                            if y >= player_top && y <= player_bottom {
+                                pushable_indices.push(idx);
+                                pushable_y_coords.push(y);
+                            }
+                        }
+                        
+                        // If we found some blocks at the player's level
+                        if !pushable_indices.is_empty() {
+                            // Now check all blocks ABOVE to see if they form a connected column with pushable blocks
+                            
+                            // Keep checking until no new pushable blocks are found
+                            let mut new_pushable_found = true;
+                            while new_pushable_found {
+                                new_pushable_found = false;
+                                
+                                for &(idx, y) in &column_blocks {
+                                    // Skip if already marked as pushable
+                                    if pushable_indices.contains(&idx) {
+                                        continue;
+                                    }
+                                    
+                                    // Only consider blocks ABOVE the player's level
+                                    if y > player_bottom {
+                                        continue;
+                                    }
+                                    
+                                    // Check if this block is connected to a pushable block directly below
+                                    if y > 0 && pushable_y_coords.contains(&(y + 1)) {
+                                        pushable_indices.push(idx);
+                                        pushable_y_coords.push(y);
+                                        new_pushable_found = true;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Check if any pushable block would be blocked in its new position
                         let mut blocked = false;
-                        for &col_idx in &column_block_indices {
-                            let (_, y) = blocks[col_idx].position;
+                        for &idx in &pushable_indices {
+                            let (_, y) = blocks[idx].position;
                             let target = (block_target_x, y);
                             
-                            // Check if target position is occupied by a block not in our column
+                            // Check if target position is occupied by a block not in our pushable set
                             for (i, b) in blocks.iter().enumerate() {
-                                if b.position == target && !column_block_indices.contains(&i) {
+                                if b.position == target && !pushable_indices.contains(&i) {
                                     blocked = true;
                                     break;
                                 }
@@ -166,10 +217,10 @@ impl Player {
                             }
                         }
                         
-                        if !blocked {
-                            // Move all non-falling blocks in the column
-                            for &col_idx in &column_block_indices {
-                                blocks[col_idx].position.0 = block_target_x;
+                        if !blocked && !pushable_indices.is_empty() {
+                            // Move all pushable blocks
+                            for &idx in &pushable_indices {
+                                blocks[idx].position.0 = block_target_x;
                             }
                             // Then move the player
                             self.position.0 = target_x;

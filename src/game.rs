@@ -4,6 +4,7 @@ use ggez::input::keyboard::{KeyInput, KeyCode};
 use ggez::input::mouse::MouseButton;
 use ggez::{Context, GameError, GameResult};
 use std::time::{Duration, Instant};
+use std::collections::HashSet; // Add this import
 
 use crate::block::{Block, spawn_random_block};
 use crate::player::Player;
@@ -15,6 +16,7 @@ pub struct GridGame {
     player: Player,
     last_update: Instant,
     pending_move: Option<KeyCode>,
+    held_keys: HashSet<KeyCode>, // Track keys that are currently being held down
     refresh_rate_milliseconds: u64,
     blocks: Vec<Block>,
     block_fall_speed: usize,
@@ -23,6 +25,7 @@ pub struct GridGame {
     game_over: bool,
     score: u32, // Add a score counter
     restart_button: graphics::Rect, // Store the restart button area
+    last_move_direction: Option<isize>, // Track the last movement direction
 }
 
 impl GridGame {
@@ -33,6 +36,7 @@ impl GridGame {
             player: Player::new(grid_size),
             last_update: Instant::now(),
             pending_move: None,
+            held_keys: HashSet::new(), // Initialize the set of held keys
             refresh_rate_milliseconds,
             blocks: Vec::new(),
             block_fall_speed,
@@ -41,6 +45,7 @@ impl GridGame {
             game_over: false,
             score: 0, // Initialize score to 0
             restart_button: graphics::Rect::new(0.0, 0.0, 0.0, 0.0), // Will be set in draw
+            last_move_direction: None, // Initialize with no direction
         };
         
         // Spawn the first block
@@ -55,9 +60,11 @@ impl GridGame {
         self.blocks.clear();
         self.last_update = Instant::now();
         self.pending_move = None;
+        self.held_keys.clear(); // Clear held keys on restart
         self.block_spawn_counter = 0;
         self.game_over = false;
         self.score = 0;
+        self.last_move_direction = None;
         
         // Spawn the first block for the new game
         self.spawn_block();
@@ -138,6 +145,11 @@ impl GridGame {
 
     fn update_falling_blocks(&mut self) {
         for i in 0..self.blocks.len() {
+            // Skip blocks that are currently being carried
+            if self.blocks[i].carried {
+                continue;
+            }
+            
             if !self.blocks[i].falling {
                 continue;
             }
@@ -216,6 +228,17 @@ impl GridGame {
         // Check if player should land, passing blocks for collision detection
         self.player.land(&self.blocks, self.grid_size);
     }
+
+    // Determine the current movement direction based on held keys
+    fn get_current_movement_direction(&self) -> Option<isize> {
+        if self.held_keys.contains(&KeyCode::Left) {
+            Some(-1)
+        } else if self.held_keys.contains(&KeyCode::Right) {
+            Some(1)
+        } else {
+            None
+        }
+    }
 }
 
 impl EventHandler for GridGame {
@@ -227,13 +250,32 @@ impl EventHandler for GridGame {
 
         // Check if one second has passed
         if self.last_update.elapsed() >= Duration::from_millis(self.refresh_rate_milliseconds) {
+            // Determine the current movement direction from held keys
+            let current_direction = self.get_current_movement_direction();
+            self.last_move_direction = current_direction;
+            
+            // Use the current direction for releasing/maintaining carried blocks
+            self.player.release_carried_blocks(&mut self.blocks, current_direction);
+            
+            // Set pending move based on held keys (for continuous movement)
+            if self.held_keys.contains(&KeyCode::Left) {
+                self.pending_move = Some(KeyCode::Left);
+            } else if self.held_keys.contains(&KeyCode::Right) {
+                self.pending_move = Some(KeyCode::Right);
+            } else if self.held_keys.contains(&KeyCode::Up) {
+                self.pending_move = Some(KeyCode::Up);
+            }
+            
             // Process pending move
             if let Some(key) = self.pending_move {
                 match key {
                     KeyCode::Left => self.player.move_left(&mut self.blocks),
                     KeyCode::Right => self.player.move_right(self.grid_size, &mut self.blocks),
                     KeyCode::Up => {
-                        self.player.jump();
+                        // Only jump if we haven't already jumped (prevent continuous jumping)
+                        if !self.player.in_air {
+                            self.player.jump();
+                        }
                     },
                     _ => {}
                 }
@@ -288,7 +330,9 @@ impl EventHandler for GridGame {
         if let Some(keycode) = key_input.keycode {
             match keycode {
                 KeyCode::Left | KeyCode::Right | KeyCode::Up => {
-                    // Store the last key press before redraw
+                    // Add to held keys
+                    self.held_keys.insert(keycode);
+                    // Also set as pending move for immediate action
                     self.pending_move = Some(keycode);
                 },
                 _ => {}
@@ -308,6 +352,39 @@ impl EventHandler for GridGame {
             // Check if click was inside the restart button
             if self.restart_button.contains([x, y]) {
                 self.restart_game();
+            }
+        }
+        Ok(())
+    }
+
+    // Add key up event handler to clear direction when keys are released
+    fn key_up_event(
+        &mut self,
+        _ctx: &mut Context,
+        key_input: KeyInput,
+    ) -> Result<(), GameError> {
+        if let Some(keycode) = key_input.keycode {
+            // Remove from held keys when released
+            self.held_keys.remove(&keycode);
+            
+            // Clear pending move if it matches this key
+            if self.pending_move == Some(keycode) {
+                self.pending_move = None;
+            }
+            
+            // Clear direction if releasing a movement key
+            match keycode {
+                KeyCode::Left => {
+                    if self.last_move_direction == Some(-1) {
+                        self.last_move_direction = None;
+                    }
+                },
+                KeyCode::Right => {
+                    if self.last_move_direction == Some(1) {
+                        self.last_move_direction = None;
+                    }
+                },
+                _ => {}
             }
         }
         Ok(())

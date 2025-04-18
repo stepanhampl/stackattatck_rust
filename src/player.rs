@@ -208,11 +208,43 @@ impl Player {
                                     player_target_x: usize, blocks: &mut [Block]) {
         let target = (block_target_x, blocks[block_idx].position.1);
         
-        // Check if the target position is occupied
-        let is_blocked = blocks.iter().any(|b| b.position == target);
+        // Check if the carried block's target position is occupied
+        let is_block_blocked = blocks.iter().any(|b| b.position == target);
         
-        if !is_blocked {
-            // Move only this falling block
+        // Check if any part of the player's body would be blocked
+        let is_player_blocked = blocks.iter().enumerate()
+            .filter(|(i, _)| *i != block_idx) // Ignore the block we're trying to move
+            .any(|(_, b)| {
+                // For each block, check all positions along the player's body
+                for body_part in 0..self.body_size {
+                    // Skip the head position if that's where we're carrying a block
+                    if body_part == 0 && b.position == (player_target_x, self.position.1) {
+                        // This is where the carried block would be - skip this check
+                        continue;
+                    }
+                    
+                    // Check if this part of the body would collide with any block
+                    if b.position == (player_target_x, self.position.1 + body_part) {
+                        return true;
+                    }
+                }
+                false
+            });
+        
+        if !is_block_blocked && !is_player_blocked {
+            // Check if the block is at the player's head level (top of the player's body)
+            let is_at_head_level = blocks[block_idx].position.1 == self.position.1;
+            
+            if is_at_head_level {
+                // Calculate move direction based on target vs current position
+                let move_direction = (block_target_x as isize - blocks[block_idx].position.0 as isize).signum();
+                
+                // Mark the block as carried and store the direction
+                blocks[block_idx].carried = true;
+                blocks[block_idx].carrying_direction = Some(move_direction);
+            }
+            
+            // Move the falling block
             blocks[block_idx].position.0 = block_target_x;
             // Then move the player
             self.position.0 = player_target_x;
@@ -320,6 +352,20 @@ impl Player {
             }
         }
         true
+    }
+    
+    // Add a new method to release carried blocks
+    pub fn release_carried_blocks(&self, blocks: &mut [Block], current_direction: Option<isize>) {
+        for block in blocks.iter_mut() {
+            if block.carried {
+                // Only release if player is not pushing in the carrying direction
+                if current_direction != block.carrying_direction {
+                    block.carried = false;
+                    block.falling = true;
+                    block.carrying_direction = None;
+                }
+            }
+        }
     }
     
     pub fn move_left(&mut self, blocks: &mut [Block]) {

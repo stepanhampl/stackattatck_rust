@@ -2,6 +2,9 @@
 // without a graphics environment. In a real-world scenario, we'd use mocking
 // or create more testable abstractions that are separated from drawing logic.
 
+// This test applies to the platform-specific rendering implementation
+// which in our restructured code would be in platform/ggez/mod.rs
+
 #[test]
 #[ignore = "Requires ggez context which is not available in automated tests"]
 fn test_draw_grid() {
@@ -12,6 +15,6 @@ fn test_draw_grid() {
     // In a real test, we would:
     // 1. Create a mock Context
     // 2. Create a mock Canvas 
-    // 3. Call draw_grid
+    // 3. Call GameAdapter's draw_grid method
     // 4. Assert that the appropriate methods were called on Canvas
 }

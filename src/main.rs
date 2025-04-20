@@ -1,20 +1,28 @@
-mod game;
-mod block;
-mod player;
-mod rendering;
-
-use game::GridGame;
+// Main entry point for the application
 use ggez::event;
 use ggez::GameResult;
 
+// Import our platform-specific adapter
+mod core;
+mod platform;
+
+use platform::ggez::GameAdapter;
+
 fn main() -> GameResult {
-    // Create an instance of the game state
-    let game = GridGame::new(16, 30.0, 200, 1, 10); // Grid size, cell size, fall speed, spawn rate
-    let grid_size = game.grid_size as f32 * game.cell_size;
+    // Game configuration
+    let grid_size = 16;
+    let cell_size = 30.0;
+    let refresh_rate = 200;
+    let block_fall_speed = 1;
+    let block_spawn_rate = 10;
     
-    // Add height for score bar
-    let window_width = grid_size;
-    let window_height = grid_size + game.cell_size; // Grid size plus score bar height
+    // Create the game adapter with our configuration
+    let game = GameAdapter::new(grid_size, cell_size, refresh_rate, block_fall_speed, block_spawn_rate);
+    
+    // Calculate window dimensions
+    let grid_pixel_size = grid_size as f32 * cell_size;
+    let window_width = grid_pixel_size;
+    let window_height = grid_pixel_size + cell_size; // Grid size plus score bar height
 
     // Create a game context and event loop
     let cb = ggez::ContextBuilder::new("stackattack_rust", "stepanhampl")

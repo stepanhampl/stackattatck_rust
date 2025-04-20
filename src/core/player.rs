@@ -1,10 +1,13 @@
-use crate::block::Block;
+// Core player implementation - platform-independent
+use crate::core::block::Block;
+use crate::core::types::Position;
+use crate::core::types::Direction;
 
 // Add a constant for fall delay duration
 const FALL_DELAY: u8 = 3; // Number of update cycles to wait before falling
 
 pub struct Player {
-    pub position: (usize, usize),
+    pub position: Position,
     pub in_air: bool,  // Track jump state
     pub is_falling: bool, // Track if player is falling due to gravity
     jump_counter: u8,  // Track how long to stay in the air
@@ -378,7 +381,7 @@ impl Player {
     }
     
     // Add a new method to release carried blocks
-    pub fn release_carried_blocks(&self, blocks: &mut [Block], current_direction: Option<isize>) {
+    pub fn release_carried_blocks(&self, blocks: &mut [Block], current_direction: Option<Direction>) {
         for block in blocks.iter_mut() {
             if block.carried {
                 // Only release if player is not pushing in the carrying direction

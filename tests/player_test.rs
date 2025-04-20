@@ -1,5 +1,5 @@
-use rust_stackattack::player::Player;
-use rust_stackattack::block::Block;
+use rust_stackattack::core::player::Player;
+use rust_stackattack::core::block::Block;
 
 #[test]
 fn test_player_creation() {

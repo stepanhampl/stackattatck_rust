@@ -1,14 +1,17 @@
+// Core block implementation - platform-independent
 use rand::Rng;
+use crate::core::types::Position;
+use crate::core::types::Direction;
 
 pub struct Block {
-    pub position: (usize, usize),
+    pub position: Position,
     pub falling: bool,
     pub carried: bool, // Track if block is being carried
-    pub carrying_direction: Option<isize>, // Track direction of carrying (positive = right, negative = left)
+    pub carrying_direction: Option<Direction>, // Track direction of carrying (positive = right, negative = left)
 }
 
 impl Block {
-    pub fn new(position: (usize, usize)) -> Self {
+    pub fn new(position: Position) -> Self {
         Self {
             position,
             falling: true,

@@ -1,4 +1,4 @@
-use rust_stackattack::block::{Block, spawn_random_block};
+use rust_stackattack::core::block::{Block, spawn_random_block};
 
 #[test]
 fn test_block_creation() {
